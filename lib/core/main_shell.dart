@@ -11,6 +11,7 @@ import 'ag_extras.dart'; // AG_EXTRAS1
 import 'ag_icons.dart';
 import 'api_client.dart';
 import 'theme.dart';
+import 'glass.dart' show kGlassBlur; // AG_WEBFAST1
 import '../core/i18n.dart'; // AG_I18N1
 
 class MainShell extends StatefulWidget {
@@ -324,6 +325,7 @@ class _MainShellState extends State<MainShell> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(28),
                   child: BackdropFilter(
+                    enabled: kGlassBlur, // AG_WEBFAST1: в браузере и на Android без размытия
                     filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                     child: Container(
                       height: 68,

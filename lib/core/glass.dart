@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 /// Главный выключатель размытия. Если на слабом телефоне или в браузере
 /// главная начнёт подтормаживать при прокрутке, поставьте false:
 /// стекло останется полупрозрачным, но без размытия фона.
-final bool kGlassBlur = defaultTargetPlatform == TargetPlatform.iOS; // AG_FIX3: Android — без размытия, плавнее на слабых телефонах
+// AG_WEBFAST1: размытие только в приложении на iPhone. В браузере (Safari на iPhone, веб-версия) — без размытия: оно сильно тормозит
+final bool kGlassBlur = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS; // AG_FIX3: Android — без размытия
 
 /// Цвет светлой кромки стекла для текущей темы.
 Color glassEdgeColor(BuildContext context) {

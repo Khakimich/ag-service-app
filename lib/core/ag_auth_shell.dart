@@ -1,5 +1,6 @@
 // AG_AUTH4..6 — общий вид входа и регистрации: живой фон, фирменная карта AG BONUS, стеклянная форма,
 // переключатель «Вход / Регистрация». Светлая и тёмная тема, телефон / планшет / компьютер.
+import 'glass.dart' show kGlassBlur; // AG_WEBFAST1
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -497,6 +498,7 @@ class _FormCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
       child: BackdropFilter(
+        enabled: kGlassBlur, // AG_WEBFAST1
         filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
