@@ -154,9 +154,23 @@ class _InviteSheetState extends State<_InviteSheet> {
               decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .25), borderRadius: BorderRadius.circular(9)),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(tr('Пригласите друга'),
-              textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+          const SizedBox(height: 6),
+          Row(children: [
+            const SizedBox(width: 44),
+            Expanded(
+              child: Text(tr('Пригласите друга'),
+                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+            ),
+            Material(
+              color: colors.onSurfaceVariant.withValues(alpha: .12),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => Navigator.of(context).pop(),
+                child: const SizedBox(width: 40, height: 40, child: Icon(Icons.close_rounded, size: 22)),
+              ),
+            ),
+          ]),
           const SizedBox(height: 4),
           Text(trf('Друг получит {0}, а вы — бонусы за его визит', [_gift]),
               textAlign: TextAlign.center,
@@ -297,6 +311,8 @@ class InviteCard extends StatelessWidget {
       aspectRatio: 1.62,
       child: LayoutBuilder(builder: (context, c) {
         final stub = c.maxWidth * .36;
+        final h = c.maxWidth / 1.62;
+        final qr = (stub - 28) < (h - 58) ? (stub - 28) : (h - 58);
         return ClipPath(
           clipper: _TicketClipper(notchX: c.maxWidth - stub),
           child: Container(
@@ -361,42 +377,31 @@ class InviteCard extends StatelessWidget {
                     ]),
                   ),
                 ),
-                // отрывной корешок с QR
+                // отрывной корешок с QR — размер QR считается от размеров карточки, всегда квадрат
                 SizedBox(
                   width: stub,
                   child: CustomPaint(
                     painter: _DashPainter(),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                      child: Column(children: [
-                        Expanded(
-                          child: LayoutBuilder(builder: (_, q) {
-                            final side = q.maxWidth < q.maxHeight ? q.maxWidth : q.maxHeight; // квадрат, не растягивается
-                            return Center(
-                              child: SizedBox(
-                            width: side,
-                            height: side,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                              child: QrImageView(
-                                data: url,
-                                padding: EdgeInsets.zero,
-                                gapless: true,
-                                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF1F1A17)),
-                                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1F1A17)),
-                              ),
-                            ),
-                              ),
-                            );
-                          }),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Container(
+                        width: qr,
+                        height: qr,
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        child: QrImageView(
+                          data: url,
+                          size: qr - 12,
+                          padding: EdgeInsets.zero,
+                          gapless: true,
+                          eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF1F1A17)),
+                          dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1F1A17)),
                         ),
-                        const SizedBox(height: 8),
-                        Text(tr('Наведите камеру'),
-                            maxLines: 1,
-                            style: TextStyle(color: Colors.white.withValues(alpha: .7), fontSize: 10.5, fontWeight: FontWeight.w700)),
-                      ]),
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(tr('Наведите камеру'),
+                          maxLines: 1,
+                          style: TextStyle(color: Colors.white.withValues(alpha: .7), fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    ]),
                   ),
                 ),
               ]),
