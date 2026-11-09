@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme.dart';
 import '../providers/referrals_provider.dart';
 import '../../../core/i18n.dart'; // AG_I18N1
+import '../widgets/invite_card.dart'; // AG_INVITE1
 
 class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
@@ -199,6 +200,15 @@ class _ReferralScreenState extends State<ReferralScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // AG_INVITE1: карточка-приглашение + WhatsApp / Telegram
+                InviteShareSection(
+                  code: summary.referralCode,
+                  url: referralUrl,
+                  giftText: tr('100 бонусов на первый ремонт'),
+                ),
+
                 const SizedBox(height: 32),
 
                 // Referral Program Rules
