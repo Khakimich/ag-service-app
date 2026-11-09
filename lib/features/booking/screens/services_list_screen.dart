@@ -33,6 +33,7 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
     _query = (widget.initialSearch ?? '').trim().toLowerCase();
     _searchCtrl = TextEditingController(text: widget.initialSearch ?? '');
     _searchCtrl.addListener(_onSearch);
+    _searchOpen = (widget.initialSearch ?? '').trim().isNotEmpty;
 
     _future = context.read<BookingRepository>().listServices();
   }
@@ -41,6 +42,7 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
   void dispose() {
     _searchCtrl.removeListener(_onSearch);
     _searchCtrl.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -416,6 +418,20 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
     );
   }
 
+  // AG_SVC2 — новый экран услуг: поиск по кнопке-лупе, лента категорий, сетка карточек
+  bool _searchOpen = false;
+  final FocusNode _searchFocus = FocusNode();
+
+  void _toggleSearch() {
+    setState(() => _searchOpen = !_searchOpen);
+    if (_searchOpen) {
+      Future.delayed(const Duration(milliseconds: 120), () { if (mounted) _searchFocus.requestFocus(); });
+    } else {
+      _searchCtrl.clear();
+      _searchFocus.unfocus();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -423,105 +439,44 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
+        bottom: false,
         child: FutureBuilder<List<Service>>(
           future: _future,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const _LoadingState();
-            }
-
-            if (snapshot.hasError) {
-              return _ErrorState(
-                message: snapshot.error.toString(),
-                onRetry: _retry,
-              );
-            }
-
+            final loading = snapshot.connectionState == ConnectionState.waiting;
             final services = snapshot.data ?? const <Service>[];
             final categories = _categories(services);
-
-            if (!categories.contains(_selectedCategory)) {
-              _selectedCategory = 'Все';
-            }
-
+            if (!categories.contains(_selectedCategory)) _selectedCategory = 'Все';
             final filtered = _filtered(services);
 
             return Column(
               children: [
-                _ServicesHeader(
-                  totalCount: services.length,
-                  onBack: () => context.agBack(), // AG_FIX1
-                ),
-                _SearchBox(
+                _AgSvcTopBar(
+                  total: services.length,
+                  searchOpen: _searchOpen,
                   controller: _searchCtrl,
-                  onClear: () {
-                    _searchCtrl.clear();
-                  },
+                  focusNode: _searchFocus,
+                  onBack: () => context.agBack(), // AG_FIX1
+                  onToggleSearch: _toggleSearch,
                 ),
-                if (services.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  _CatalogButton(
-                    selectedCategory: _selectedCategory,
-                    categoryCount: categories.length - 1,
-                    onTap: () {
-                      _openCategoriesCatalog(services, categories);
-                    },
+                if (!loading && !snapshot.hasError && services.isNotEmpty)
+                  _AgCategoryStrip(
+                    categories: categories,
+                    selected: _selectedCategory,
+                    countFor: (c) => c == 'Все' ? services.length : services.where((s) => s.category == c).length,
+                    iconFor: _iconForCategory,
+                    onSelect: (c) => setState(() => _selectedCategory = c),
+                    onOpenCatalog: () => _openCategoriesCatalog(services, categories),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 15, 18, 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _selectedCategory == 'Все'
-                                ? tr('Все услуги')
-                                : _selectedCategory,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -.25,
-                            ),
-                          ),
-                        ),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: Container(
-                            key: ValueKey(filtered.length),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: BrandColors.orange.withValues(alpha: .09),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${filtered.length}',
-                              style: const TextStyle(
-                                color: BrandColors.orange,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 240),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    child: _buildList(
-                      services,
-                      filtered,
-                      key: ValueKey('$_selectedCategory|$_query'),
-                    ),
-                  ),
+                  child: loading
+                      ? const _LoadingState()
+                      : snapshot.hasError
+                          ? _ErrorState(message: snapshot.error.toString(), onRetry: _retry)
+                          : AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              child: _buildList(services, filtered, key: ValueKey('$_selectedCategory|$_query')),
+                            ),
                 ),
               ],
             );
@@ -552,10 +507,7 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
         actionText: tr('Сбросить фильтры'),
         onAction: () {
           _searchCtrl.clear();
-
-          setState(() {
-            _selectedCategory = 'Все';
-          });
+          setState(() => _selectedCategory = 'Все');
         },
       );
     }
@@ -565,43 +517,335 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
       color: BrandColors.orange,
       onRefresh: () async {
         final future = context.read<BookingRepository>().listServices();
-
-        setState(() {
-          _future = future;
-        });
-
+        setState(() => _future = future);
         await future;
       },
       child: LayoutBuilder(
-        builder: (context, constraints) {
-          final contentWidth =
-              constraints.maxWidth > 760 ? 760.0 : constraints.maxWidth;
-
-          final horizontalPadding =
-              constraints.maxWidth > 760
-                  ? (constraints.maxWidth - contentWidth) / 2 + 18
-                  : 18.0;
-
-          return ListView.separated(
+        builder: (context, c) {
+          final cols = c.maxWidth >= 900 ? 4 : c.maxWidth >= 600 ? 3 : 2;
+          return CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              5,
-              horizontalPadding,
-              110,
-            ),
-            itemCount: filtered.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, index) {
-              final service = filtered[index];
-
-              return _ServiceCard(
-                service: service,
-                iconAsset: _iconForCategory(service.category),
-              );
-            },
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 10),
+                sliver: SliverToBoxAdapter(
+                  child: Row(children: [
+                    Expanded(
+                      child: Text(
+                        _query.isNotEmpty
+                            ? trf('Найдено: {0}', [filtered.length])
+                            : (_selectedCategory == 'Все' ? tr('Все услуги') : _selectedCategory),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3),
+                      ),
+                    ),
+                    Text('${filtered.length}',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 120 + MediaQuery.paddingOf(context).bottom),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    mainAxisExtent: 238,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => _AgServiceTile(service: filtered[i], iconAsset: _iconForCategory(filtered[i].category)),
+                    childCount: filtered.length,
+                  ),
+                ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+/* ===================== AG_SVC2: верхняя панель с кнопкой поиска ===================== */
+class _AgSvcTopBar extends StatelessWidget {
+  const _AgSvcTopBar({
+    required this.total,
+    required this.searchOpen,
+    required this.controller,
+    required this.focusNode,
+    required this.onBack,
+    required this.onToggleSearch,
+  });
+
+  final int total;
+  final bool searchOpen;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onBack;
+  final VoidCallback onToggleSearch;
+
+  Widget _round(BuildContext context, IconData icon, VoidCallback onTap, {bool accent = false}) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: accent ? BrandColors.orange : colors.surfaceContainerHighest.withValues(alpha: .7),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: SizedBox(width: 46, height: 46, child: Icon(icon, size: 23, color: accent ? Colors.white : colors.onSurface)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        transitionBuilder: (child, a) => FadeTransition(
+          opacity: a,
+          child: SizeTransition(sizeFactor: a, axis: Axis.horizontal, axisAlignment: 1, child: child),
+        ),
+        child: searchOpen
+            ? Row(key: const ValueKey('s'), children: [
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest.withValues(alpha: .7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: BrandColors.orange.withValues(alpha: .55), width: 1.5),
+                    ),
+                    child: Row(children: [
+                      const SizedBox(width: 12),
+                      const Icon(Icons.search_rounded, color: BrandColors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          textInputAction: TextInputAction.search,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            border: InputBorder.none,
+                            hintText: tr('Найти услугу'),
+                          ),
+                        ),
+                      ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (_, v, __) => v.text.isEmpty
+                            ? const SizedBox(width: 10)
+                            : IconButton(
+                                visualDensity: VisualDensity.compact,
+                                onPressed: controller.clear,
+                                icon: Icon(Icons.cancel_rounded, size: 20, color: colors.onSurfaceVariant),
+                              ),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: onToggleSearch,
+                  child: Text(tr('Отмена'), style: const TextStyle(color: BrandColors.orange, fontWeight: FontWeight.w800)),
+                ),
+              ])
+            : Row(key: const ValueKey('t'), children: [
+                _round(context, Icons.arrow_back_ios_new_rounded, onBack),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(tr('Услуги'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -.6, height: 1.05)),
+                    if (total > 0)
+                      Text(trf('{0} услуг автосервиса', [total]),
+                          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+                _round(context, Icons.search_rounded, onToggleSearch, accent: true),
+              ]),
+      ),
+    );
+  }
+}
+
+/* ===================== AG_SVC2: лента категорий ===================== */
+class _AgCategoryStrip extends StatelessWidget {
+  const _AgCategoryStrip({
+    required this.categories,
+    required this.selected,
+    required this.countFor,
+    required this.iconFor,
+    required this.onSelect,
+    required this.onOpenCatalog,
+  });
+
+  final List<String> categories;
+  final String selected;
+  final int Function(String) countFor;
+  final String Function(String) iconFor;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onOpenCatalog;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+        itemCount: categories.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          if (i == categories.length) {
+            return _chip(context, colors, isDark,
+                label: tr('Все категории'), on: false, onTap: onOpenCatalog,
+                icon: const Icon(Icons.grid_view_rounded, color: BrandColors.orange, size: 26));
+          }
+          final c = categories[i];
+          final on = c == selected;
+          return _chip(context, colors, isDark,
+              label: c == 'Все' ? tr('Все') : c,
+              badge: countFor(c),
+              on: on,
+              onTap: () => onSelect(c),
+              icon: Image.asset(iconFor(c), width: 34, height: 34, fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(Icons.car_repair_rounded, color: on ? Colors.white : BrandColors.orange)));
+        },
+      ),
+    );
+  }
+
+  Widget _chip(BuildContext context, ColorScheme colors, bool isDark,
+      {required String label, required bool on, required VoidCallback onTap, required Widget icon, int? badge}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 84,
+        padding: const EdgeInsets.fromLTRB(6, 9, 6, 7),
+        decoration: BoxDecoration(
+          color: on ? BrandColors.orange : (isDark ? const Color(0xFF1B1E22) : const Color(0xFFFFF4EC)),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: on ? [BoxShadow(color: BrandColors.orange.withValues(alpha: .3), blurRadius: 14, offset: const Offset(0, 6))] : null,
+        ),
+        child: Column(children: [
+          Container(
+            width: 42,
+            height: 42,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: on ? Colors.white : Colors.white.withValues(alpha: isDark ? .08 : 1), borderRadius: BorderRadius.circular(13)),
+            child: Center(child: icon),
+          ),
+          const Spacer(),
+          Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, height: 1.1, fontWeight: FontWeight.w800, color: on ? Colors.white : colors.onSurface)),
+          if (badge != null)
+            Text('$badge', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: on ? Colors.white70 : colors.onSurfaceVariant)),
+        ]),
+      ),
+    );
+  }
+}
+
+/* ===================== AG_SVC2: карточка услуги в сетке ===================== */
+class _AgServiceTile extends StatelessWidget {
+  const _AgServiceTile({required this.service, required this.iconAsset});
+
+  final Service service;
+  final String iconAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasDiscount = service.discountTag != null && service.discountTag!.trim().isNotEmpty;
+    return Material(
+      color: isDark ? const Color(0xFF16191D) : Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      child: InkWell(
+        onTap: () => context.push('/services/${service.id}'),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .45)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(
+              height: 112,
+              width: double.infinity,
+              child: Stack(fit: StackFit.expand, children: [
+                _ServiceImage(photoUrl: service.photoUrl, iconAsset: iconAsset),
+                if (hasDiscount)
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFDC2626), borderRadius: BorderRadius.circular(9)),
+                      child: Text(service.discountTag!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: .55), borderRadius: BorderRadius.circular(9)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.schedule_rounded, size: 12, color: Colors.white),
+                      const SizedBox(width: 3),
+                      Text(service.durationLabel, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(service.category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: BrandColors.orange, fontSize: 11, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(service.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14.5, height: 1.2, fontWeight: FontWeight.w800, letterSpacing: -.2)),
+                  const Spacer(),
+                  Row(children: [
+                    Expanded(
+                      child: Text(service.priceLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, letterSpacing: -.3)),
+                    ),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(color: BrandColors.orange, borderRadius: BorderRadius.circular(11)),
+                      child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                    ),
+                  ]),
+                ]),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }
