@@ -632,7 +632,15 @@ class _AgSvcTopBar extends StatelessWidget {
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             isCollapsed: true,
+                            filled: false, // AG_SVC2: без заливки и рамки из темы
+                            fillColor: Colors.transparent,
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
                             hintText: tr('Найти услугу'),
                           ),
                         ),
