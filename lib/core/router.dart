@@ -34,6 +34,7 @@ import '../models/booking_with_details.dart';
 import '../models/ag_news_item.dart';
 import '../models/chat_conversation.dart';
 import 'main_shell.dart';
+import '../features/park/park_join_screen.dart'; // AG_PARK1
 
 GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
   initialLocation: '/',
@@ -106,6 +107,7 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
           ],
         ),
         GoRoute(path: '/about', builder: (_, __) => const AboutServiceScreen()),
+        GoRoute(path: '/park', builder: (_, __) => const ParkJoinScreen()), // AG_PARK1
         GoRoute(path: '/chats', builder: (_, __) => const ChatsScreen()),
         GoRoute(
           path: '/profile',

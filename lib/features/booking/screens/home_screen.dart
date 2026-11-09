@@ -133,6 +133,9 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 18),
 
                     _quickActions(),
+                    const SizedBox(height: 16),
+
+                    _parkBanner(), // AG_PARK1
                     const SizedBox(height: 20),
 
                     _sectionHeader(
@@ -393,6 +396,47 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _referralBankCard() {
     return _Pressable(pressedScale: 0.98, child: _referralBankCardBase());
+  }
+
+  // AG_PARK1: баннер «Подключение к парку Азия Про»
+  Widget _parkBanner() {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return _Pressable(
+      pressedScale: 0.98,
+      child: GestureDetector(
+        onTap: () => context.push('/park'),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF1B1E22) : Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF26200).withValues(alpha: .28)),
+            boxShadow: [BoxShadow(color: const Color(0xFFF26200).withValues(alpha: dark ? .0 : .10), blurRadius: 18, offset: const Offset(0, 8))],
+          ),
+          child: Row(children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(colors: [Color(0xFFFFB13D), Color(0xFFF26200)]),
+              ),
+              child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(tr('Подключение к парку «Азия Про»'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, letterSpacing: -.2)),
+                const SizedBox(height: 2),
+                Text(tr('Оставьте заявку — менеджер перезвонит'),
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFF26200), size: 26),
+          ]),
+        ),
+      ),
+    );
   }
 
   Widget _referralBankCardBase() {
