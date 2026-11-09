@@ -27,15 +27,28 @@ class ReferralSummary {
     required this.referralCode,
     required this.bonusPoints,
     required this.referrals,
+    this.friendReward = 100,
+    this.referrerSignupReward = 0,
+    this.referrerFirstVisitReward = 300,
   });
 
   final String referralCode;
   final int bonusPoints;
   final List<ReferralFriend> referrals;
+  // AG_REFLVL1: суммы наград из настроек сервера
+  final int friendReward;
+  final int referrerSignupReward;
+  final int referrerFirstVisitReward;
+  int get referrerTotal => referrerSignupReward + referrerFirstVisitReward;
 
   factory ReferralSummary.fromJson(Map<String, dynamic> json) {
     final list = json['referrals'] as List? ?? [];
+    final rw = json['rewards'] is Map ? json['rewards'] as Map : const {};
+    int n(Object? v, int d) => v is num ? v.toInt() : int.tryParse('$v') ?? d;
     return ReferralSummary(
+      friendReward: n(rw['friend'], 100),
+      referrerSignupReward: n(rw['referrer_signup'], 0),
+      referrerFirstVisitReward: n(rw['referrer_first_visit'], 300),
       referralCode: json['referral_code'] as String,
       bonusPoints: json['bonus_points'] as int? ?? 0,
       referrals: list

@@ -8,6 +8,7 @@ import '../../../core/theme.dart';
 import '../providers/referrals_provider.dart';
 import '../../../core/i18n.dart'; // AG_I18N1
 import '../widgets/invite_card.dart'; // AG_INVITE1
+import '../../../core/ag_levels.dart'; // AG_REFLVL1
 
 class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
@@ -206,7 +207,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 InviteFriendsButton( // AG_INVITE2
                   code: summary.referralCode,
                   url: referralUrl,
-                  giftText: tr('100 бонусов на первый ремонт'),
+                  giftText: trf('{0} бонусов на первый ремонт', [summary.friendReward]),
                 ),
 
                 const SizedBox(height: 32),
@@ -223,21 +224,30 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 const SizedBox(height: 12),
                 _RuleTile(
                   icon: Icons.person_add_alt_1_rounded,
-                  title: tr('Регистрация по ссылке'),
-                  description:
-                      tr('Вашему другу начисляется 100 приветственных баллов.'),
+                  title: tr('Друг регистрируется по ссылке'),
+                  description: trf('Другу сразу начисляется {0} приветственных бонусов.', [summary.friendReward]),
                 ),
-                _RuleTile(
-                  icon: Icons.celebration_rounded,
-                  title: tr('Приглашение принято'),
-                  description:
-                      tr('Вам начисляется 50 баллов, когда друг регистрируется.'),
-                ),
+                if (summary.referrerSignupReward > 0)
+                  _RuleTile(
+                    icon: Icons.celebration_rounded,
+                    title: tr('Приглашение принято'),
+                    description: trf('Вам — {0} ₽, когда друг зарегистрируется.', [summary.referrerSignupReward]),
+                  ),
                 _RuleTile(
                   icon: Icons.check_circle_outline_rounded,
-                  title: tr('Первый визит друга'),
-                  description:
-                      tr('Вам начисляется 200 баллов, когда ваш приглашенный друг впервые завершает обслуживание в сервисе.'),
+                  title: tr('Первый ремонт друга'),
+                  description: trf('Вам — {0} ₽ на бонусный счёт, когда друг впервые обслужится в сервисе.', [summary.referrerFirstVisitReward]),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon( // AG_REFLVL1
+                  onPressed: () => showAgLevelsSheet(context, invited: summary.referrals.length, rewardPerFriend: summary.referrerTotal),
+                  icon: const Icon(Icons.workspace_premium_rounded, color: BrandColors.orange),
+                  label: Text(tr('Уровни и привилегии'), style: const TextStyle(color: BrandColors.orange, fontWeight: FontWeight.w800)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    side: BorderSide(color: BrandColors.orange.withValues(alpha: .45)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                 ),
                 const SizedBox(height: 32),
 

@@ -22,6 +22,7 @@ import '../../../models/user_car.dart';
 import '../providers/company_provider.dart';
 import '../providers/referrals_provider.dart';
 import '../../../core/i18n.dart'; // AG_I18N1
+import '../../../core/ag_levels.dart'; // AG_REFLVL1
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -2829,7 +2830,9 @@ class _AgBonusCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Opacity(opacity: .8, child: SvgPicture.string(_nfc, width: 22, height: 22)),
                         const Spacer(),
-                        Container(
+                        GestureDetector( // AG_REFLVL1: нажали на уровень — экран уровней
+                          onTap: () => showAgLevelsSheet(context, invited: invited),
+                          child: Container(
                           padding: const EdgeInsets.fromLTRB(6, 5, 11, 5),
                           decoration: BoxDecoration(
                             color: pill,
@@ -2844,8 +2847,11 @@ class _AgBonusCard extends StatelessWidget {
                               Text(rank,
                                   style: const TextStyle(
                                       color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: .8)),
+                              const SizedBox(width: 2),
+                              const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 16),
                             ],
                           ),
+                        ),
                         ),
                       ],
                     ),
@@ -2930,8 +2936,11 @@ class _AgBonusCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(nextAt == null ? 'MAX' : trf('ещё {0} до {1}', [left, nextName]),
-                            style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w700)),
+                        GestureDetector(
+                          onTap: () => showAgLevelsSheet(context, invited: invited),
+                          child: Text(nextAt == null ? 'MAX' : trf('ещё {0} до {1} ›', [left, nextName]),
+                              style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w700)),
+                        ),
                       ],
                     ),
                     const Spacer(),
