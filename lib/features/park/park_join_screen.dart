@@ -23,8 +23,15 @@ class ParkJoinScreen extends StatefulWidget {
 class _ParkJoinScreenState extends State<ParkJoinScreen> {
   final _fio = TextEditingController();
   final _phone = TextEditingController();
-  XFile? _front, _back;
-  Uint8List? _frontBytes, _backBytes;
+  // AG_PARK2: 0 — СТС лицевая, 1 — СТС оборот, 2 — права лицевая, 3 — права оборот
+  final List<XFile?> _files = [null, null, null, null];
+  final List<Uint8List?> _bytes = [null, null, null, null];
+  String? _country;
+
+  static const _countries = <List<String>>[
+    ['🇷🇺', 'Россия'], ['🇹🇯', 'Таджикистан'], ['🇺🇿', 'Узбекистан'], ['🇰🇬', 'Кыргызстан'],
+    ['🇰🇿', 'Казахстан'], ['🇦🇲', 'Армения'], ['🇦🇿', 'Азербайджан'], ['🇧🇾', 'Беларусь'], ['🌍', 'Другая страна'],
+  ];
   bool _sending = false;
   String? _error;
   String? _doneNumber;
@@ -46,7 +53,7 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
     super.dispose();
   }
 
-  Future<void> _pick(bool front) async {
+  Future<void> _pick(int slot) async {
     final src = await showModalBottomSheet<ImageSource>(
       context: context,
       useRootNavigator: true,
@@ -63,13 +70,8 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
       if (f == null) return;
       final bytes = await f.readAsBytes();
       setState(() {
-        if (front) {
-          _front = f;
-          _frontBytes = bytes;
-        } else {
-          _back = f;
-          _backBytes = bytes;
-        }
+        _files[slot] = f;
+        _bytes[slot] = bytes;
         _error = null;
       });
     } catch (_) {
@@ -82,8 +84,11 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
     if (fio.split(RegExp(r'\s+')).length < 2 || fio.length < 5) return tr('Укажите фамилию, имя и отчество');
     final d = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (d.length < 10) return tr('Проверьте номер телефона');
-    if (_frontBytes == null) return tr('Добавьте фото СТС — лицевая сторона');
-    if (_backBytes == null) return tr('Добавьте фото СТС — оборотная сторона');
+    if (_bytes[0] == null) return tr('Добавьте фото СТС — лицевая сторона');
+    if (_bytes[1] == null) return tr('Добавьте фото СТС — оборотная сторона');
+    if (_country == null) return tr('Выберите, какой страны у вас права');
+    if (_bytes[2] == null) return tr('Добавьте фото прав — лицевая сторона');
+    if (_bytes[3] == null) return tr('Добавьте фото прав — оборотная сторона');
     return null;
   }
 
@@ -102,8 +107,11 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
         ..fields['fio'] = _fio.text.trim()
         ..fields['phone'] = _phone.text.trim()
         ..fields['user_id'] = context.read<AuthProvider>().user?.id ?? ''
-        ..files.add(http.MultipartFile.fromBytes('sts_front', _frontBytes!, filename: _name(_front, 'sts_front')))
-        ..files.add(http.MultipartFile.fromBytes('sts_back', _backBytes!, filename: _name(_back, 'sts_back')));
+        ..fields['license_country'] = _country!;
+      const names = ['sts_front', 'sts_back', 'license_front', 'license_back'];
+      for (var i = 0; i < 4; i++) {
+        req.files.add(http.MultipartFile.fromBytes(names[i], _bytes[i]!, filename: _name(_files[i], names[i])));
+      }
       final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 90)));
       Map<String, dynamic> j = {};
       try {
@@ -222,10 +230,46 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
             style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: _photoBox(tr('Лицевая сторона'), _frontBytes, () => _pick(true), dark)),
+          Expanded(child: _photoBox(tr('Лицевая сторона'), _bytes[0], () => _pick(0), dark)),
           const SizedBox(width: 12),
-          Expanded(child: _photoBox(tr('Оборотная сторона'), _backBytes, () => _pick(false), dark)),
+          Expanded(child: _photoBox(tr('Оборотная сторона'), _bytes[1], () => _pick(1), dark)),
         ]),
+        const SizedBox(height: 26),
+        // AG_PARK2: водительские права — сначала страна, потом фото
+        Text(tr('Водительское удостоверение'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(tr('Права какой страны у вас?'), style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final c in _countries)
+            ChoiceChip(
+              label: Text('${c[0]}  ${tr(c[1])}'),
+              selected: _country == c[1],
+              showCheckmark: false,
+              selectedColor: BrandColors.orange,
+              labelStyle: TextStyle(fontWeight: FontWeight.w700, color: _country == c[1] ? Colors.white : null),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: BorderSide(color: _country == c[1] ? BrandColors.orange : colors.outlineVariant),
+              onSelected: _sending ? null : (_) => setState(() { _country = c[1]; _error = null; }),
+            ),
+        ]),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          child: _country == null
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(trf('Фото прав ({0}) — обе стороны', [tr(_country!)]), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(child: _photoBox(tr('Лицевая сторона'), _bytes[2], () => _pick(2), dark)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _photoBox(tr('Оборотная сторона'), _bytes[3], () => _pick(3), dark)),
+                    ]),
+                  ]),
+                ),
+        ),
         if (_error != null) ...[
           const SizedBox(height: 16),
           Container(
