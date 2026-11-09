@@ -54,6 +54,7 @@ Future<void> showInviteSheet(BuildContext context, {required String code, requir
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    useRootNavigator: true, // поверх нижнего меню приложения
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: .55),
     builder: (_) => _InviteSheet(code: code, url: url, giftText: giftText),
@@ -369,8 +370,12 @@ class InviteCard extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                       child: Column(children: [
                         Expanded(
-                          child: AspectRatio(
-                            aspectRatio: 1,
+                          child: LayoutBuilder(builder: (_, q) {
+                            final side = q.maxWidth < q.maxHeight ? q.maxWidth : q.maxHeight; // квадрат, не растягивается
+                            return Center(
+                              child: SizedBox(
+                            width: side,
+                            height: side,
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
@@ -382,7 +387,9 @@ class InviteCard extends StatelessWidget {
                                 dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1F1A17)),
                               ),
                             ),
-                          ),
+                              ),
+                            );
+                          }),
                         ),
                         const SizedBox(height: 8),
                         Text(tr('Наведите камеру'),
