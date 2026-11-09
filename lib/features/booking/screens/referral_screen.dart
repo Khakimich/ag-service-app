@@ -203,7 +203,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 const SizedBox(height: 16),
 
                 // AG_INVITE1: карточка-приглашение + WhatsApp / Telegram
-                InviteShareSection(
+                InviteFriendsButton( // AG_INVITE2
                   code: summary.referralCode,
                   url: referralUrl,
                   giftText: tr('100 бонусов на первый ремонт'),

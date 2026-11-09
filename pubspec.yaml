@@ -90,6 +90,7 @@ flutter:
     - assets/icons/auth/
     - assets/icons/
     - assets/icons/car_form/
+    - assets/icons/share/ # AG_INVITE2: whatsapp.svg, telegram.svg, max.svg
 
 
 
