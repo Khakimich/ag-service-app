@@ -1,0 +1,3327 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:record/record.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+
+import '../../../core/theme.dart';
+import '../../../models/chat_message.dart';
+import '../../../models/chat_conversation.dart';
+import '../data/chat_repository.dart';
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({
+    super.key,
+    required this.conversationId,
+    this.conversation,
+  });
+  final String conversationId;
+  final ChatConversation? conversation;
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
+  static const _pollInterval = Duration(seconds: 6);
+
+  final _messages = <ChatMessage>[];
+  final _inputCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final _focusNode = FocusNode();
+  final _picker = ImagePicker();
+
+  // Voice recording
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _voicePreviewPlayer = AudioPlayer();
+
+  StreamSubscription<Uint8List>? _voiceStreamSubscription;
+  Timer? _voiceTimer;
+
+  final List<int> _voicePcmBytes = <int>[];
+
+  bool _isRecordingVoice = false;
+  bool _isVoicePreviewPlaying = false;
+
+  Duration _voiceRecordDuration = Duration.zero;
+  Uint8List? _recordedVoiceBytes;
+
+  Timer? _timer;
+  bool _initialLoading = true;
+  bool _sending = false;
+  String? _error;
+  XFile? _pickedImage;
+  PlatformFile? _pickedFile;
+
+  ChatMessage? _replyingTo;
+  ChatMessage? _editingMessage;
+
+  // ISO timestamp of the last message we received — used for incremental polling
+  String? _lastTimestamp;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _voiceTimer?.cancel();
+    _voiceStreamSubscription?.cancel();
+    _audioRecorder.dispose();
+    _voicePreviewPlayer.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _inputCtrl.dispose();
+    _scrollCtrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  // Stop polling when app goes to background; resume on foreground.
+  // Prevents unnecessary network traffic and avoids waking Render's sleeping instance.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _timer?.cancel();
+      _timer = null;
+    } else if (state == AppLifecycleState.resumed && _timer == null) {
+      _poll(); // immediate catch-up
+      _startPolling();
+    }
+  }
+
+  Future<void> _loadInitial() async {
+    try {
+      final msgs = await context.read<ChatRepository>().fetchMessages(
+        widget.conversationId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages.addAll(msgs);
+        if (msgs.isNotEmpty) {
+          _lastTimestamp = msgs.last.createdAt.toUtc().toIso8601String();
+        }
+        _initialLoading = false;
+      });
+      _scrollToBottom(animated: false);
+      _startPolling();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _initialLoading = false;
+      });
+    }
+  }
+
+  void _startPolling() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_pollInterval, (_) => _poll());
+  }
+
+  Future<void> _poll() async {
+    if (!mounted) return;
+    try {
+      final newMsgs = await context.read<ChatRepository>().fetchMessages(
+        widget.conversationId,
+        after: _lastTimestamp,
+      );
+      if (!mounted || newMsgs.isEmpty) return;
+      setState(() {
+        final existingIds = _messages.map((m) => m.id).toSet();
+        for (final msg in newMsgs) {
+          if (!existingIds.contains(msg.id)) {
+            _messages.add(msg);
+          }
+        }
+        _lastTimestamp = newMsgs.last.createdAt.toUtc().toIso8601String();
+      });
+      _scrollToBottom();
+    } catch (_) {
+      // Polling errors are silent — next tick will retry.
+    }
+  }
+
+  Future<void> _showMessageActions(ChatMessage message) async {
+    if (message.isTemp || !mounted) return;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: BrandColors.surface,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MessageActionTile(
+                icon: 'icons/chat/reply.svg',
+                title: 'Ответить',
+                onTap: () => Navigator.pop(sheetContext, 'reply'),
+              ),
+              if (!message.isDeleted && message.body.trim().isNotEmpty)
+                _MessageActionTile(
+                  icon: 'icons/chat/copy.svg',
+                  title: 'Копировать',
+                  onTap: () => Navigator.pop(sheetContext, 'copy'),
+                ),
+              if (message.isFromClient && !message.isDeleted)
+                _MessageActionTile(
+                  icon: 'icons/chat/edit.svg',
+                  title: 'Редактировать',
+                  onTap: () => Navigator.pop(sheetContext, 'edit'),
+                ),
+              if (!message.isDeleted)
+                _MessageActionTile(
+                  icon: 'icons/chat/pin.svg',
+                  title: message.isPinned ? 'Открепить' : 'Закрепить',
+                  onTap: () => Navigator.pop(sheetContext, 'pin'),
+                ),
+              _MessageActionTile(
+                icon: 'icons/chat/delete.svg',
+                title: 'Удалить',
+                destructive: true,
+                onTap: () => Navigator.pop(sheetContext, 'delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: message.body));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сообщение скопировано'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+        break;
+
+      case 'pin':
+        await _toggleMessagePin(message);
+        break;
+
+      case 'delete':
+        await _showDeleteMessageDialog(message);
+        break;
+
+      case 'reply':
+        _startReply(message);
+        break;
+
+      case 'edit':
+        _startEdit(message);
+        break;
+    }
+  }
+
+  Future<void> _toggleMessagePin(ChatMessage message) async {
+    try {
+      await context.read<ChatRepository>().togglePinMessage(
+        widget.conversationId,
+        message.id,
+      );
+
+      if (!mounted) return;
+
+      await _refreshMessages();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось изменить закрепление: $e')),
+      );
+    }
+  }
+
+  Future<void> _showDeleteMessageDialog(ChatMessage message) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: BrandColors.surface,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MessageActionTile(
+                icon: 'icons/chat/delete.svg',
+                title: 'Удалить у себя',
+                destructive: true,
+                onTap: () => Navigator.pop(sheetContext, 'me'),
+              ),
+              if (message.isFromClient)
+                _MessageActionTile(
+                  icon: 'icons/chat/delete.svg',
+                  title: 'Удалить у всех',
+                  destructive: true,
+                  onTap: () => Navigator.pop(sheetContext, 'everyone'),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    try {
+      if (action == 'me') {
+        await context.read<ChatRepository>().deleteMessageForMe(
+          widget.conversationId,
+          message.id,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          _messages.removeWhere((item) => item.id == message.id);
+        });
+      }
+
+      if (action == 'everyone') {
+        await context.read<ChatRepository>().deleteMessageForEveryone(
+          widget.conversationId,
+          message.id,
+        );
+
+        if (!mounted) return;
+
+        await _refreshMessages();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось удалить сообщение: $e')),
+      );
+    }
+  }
+
+  Future<void> _refreshMessages() async {
+    final messages = await context.read<ChatRepository>().fetchMessages(
+      widget.conversationId,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _messages
+        ..clear()
+        ..addAll(messages);
+
+      _lastTimestamp =
+          messages.isEmpty
+              ? null
+              : messages.last.createdAt.toUtc().toIso8601String();
+    });
+  }
+
+  void _startReply(ChatMessage message) {
+    if (message.isDeleted) return;
+
+    setState(() {
+      _editingMessage = null;
+      _replyingTo = message;
+    });
+
+    _focusNode.requestFocus();
+  }
+
+  void _startEdit(ChatMessage message) {
+    if (message.isDeleted) return;
+
+    setState(() {
+      _replyingTo = null;
+      _editingMessage = message;
+      _inputCtrl.text = message.body;
+      _inputCtrl.selection = TextSelection.collapsed(
+        offset: _inputCtrl.text.length,
+      );
+    });
+
+    _focusNode.requestFocus();
+  }
+
+  void _cancelReplyOrEdit() {
+    setState(() {
+      final wasEditing = _editingMessage != null;
+
+      _replyingTo = null;
+      _editingMessage = null;
+
+      if (wasEditing) {
+        _inputCtrl.clear();
+      }
+    });
+
+    _focusNode.requestFocus();
+  }
+
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 70,
+    );
+    if (image != null && mounted) {
+      setState(() => _pickedImage = image);
+    }
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    if (result != null && result.files.isNotEmpty && mounted) {
+      setState(() => _pickedFile = result.files.first);
+    }
+  }
+
+  void _clearPickedFile() {
+    setState(() => _pickedFile = null);
+  }
+
+  void _clearPickedImage() {
+    setState(() {
+      _pickedImage = null;
+    });
+  }
+
+  Future<void> _send() async {
+    final text = _inputCtrl.text.trim();
+
+    final editing = _editingMessage;
+
+    if (editing != null) {
+      if (text.isEmpty || _sending) return;
+
+      setState(() => _sending = true);
+
+      try {
+        final updated = await context.read<ChatRepository>().editMessage(
+          widget.conversationId,
+          editing.id,
+          text,
+        );
+
+        if (!mounted) return;
+
+        setState(() {
+          final index = _messages.indexWhere((m) => m.id == updated.id);
+
+          if (index != -1) {
+            _messages[index] = updated;
+          }
+
+          _editingMessage = null;
+          _replyingTo = null;
+          _inputCtrl.clear();
+        });
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось изменить сообщение: $e')),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _sending = false);
+        }
+      }
+
+      return;
+    }
+
+    final hasImage = _pickedImage != null;
+    final hasFile = _pickedFile != null;
+    if (text.isEmpty && !hasImage && !hasFile) return;
+    if (_sending) return;
+
+    String? photoBase64;
+    if (hasImage) {
+      final bytes = await _pickedImage!.readAsBytes();
+      photoBase64 = base64Encode(bytes);
+    }
+
+    String? fileBase64;
+    String? fileName;
+    if (hasFile && _pickedFile!.bytes != null) {
+      fileBase64 = base64Encode(_pickedFile!.bytes!);
+      fileName = _pickedFile!.name;
+    }
+
+    final replyToSend = _replyingTo;
+
+    final tempId = 'temp-${DateTime.now().millisecondsSinceEpoch}';
+    final tempType =
+        hasImage
+            ? 'image'
+            : (hasFile &&
+                    (fileName?.endsWith('.mp4') == true ||
+                        _pickedFile!.name.endsWith('.mp4') == true)
+                ? 'video'
+                : 'file');
+
+    final tempMsg = ChatMessage(
+      id: tempId,
+      conversationId: widget.conversationId,
+      senderRole: 'client',
+      body:
+          text.isNotEmpty
+              ? text
+              : (tempType == 'image'
+                  ? 'Фото'
+                  : tempType == 'video'
+                  ? 'Видео'
+                  : fileName ?? 'Файл'),
+      createdAt: DateTime.now(),
+      fileName: fileName,
+      replyToId: replyToSend?.id,
+      isTemp: true,
+      uploading: true,
+      tempType: tempType,
+    );
+
+    _inputCtrl.clear();
+    final imageToSend = _pickedImage;
+    final fileToSend = _pickedFile;
+    setState(() {
+      _sending = true;
+      _pickedImage = null;
+      _pickedFile = null;
+      _replyingTo = null;
+      _messages.add(tempMsg);
+    });
+    _scrollToBottom();
+
+    try {
+      if (!mounted) return;
+      final msg = await context.read<ChatRepository>().sendMessage(
+        widget.conversationId,
+        body: text.isNotEmpty ? text : null,
+        photoBase64: hasImage ? 'data:image/jpeg;base64,$photoBase64' : null,
+        fileBase64:
+            fileBase64 != null
+                ? '${_mimeFromName(fileName ?? '')}base64,$fileBase64'
+                : null,
+        fileName: fileName,
+        replyToId: replyToSend?.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        final index = _messages.indexWhere((m) => m.id == tempId);
+        if (index != -1) {
+          _messages[index] = msg;
+        } else {
+          _messages.add(msg);
+        }
+        _lastTimestamp = msg.createdAt.toUtc().toIso8601String();
+      });
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.removeWhere((m) => m.id == tempId);
+        _replyingTo = replyToSend;
+      });
+      if (text.isNotEmpty) _inputCtrl.text = text;
+      if (imageToSend != null) _pickedImage = imageToSend;
+      if (fileToSend != null) _pickedFile = fileToSend;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _scrollToBottom({bool animated = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollCtrl.hasClients) return;
+      if (animated) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final conv = widget.conversation;
+    final specialistName = conv?.displayName ?? 'Специалист';
+    final photoUrl = conv?.specialistPhotoUrl;
+    final initials = specialistName[0].toUpperCase();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.orange.withValues(alpha: 0.12),
+              backgroundImage:
+                  photoUrl != null && photoUrl.isNotEmpty
+                      ? CachedNetworkImageProvider(photoUrl)
+                      : null,
+              child:
+                  photoUrl == null || photoUrl.isEmpty
+                      ? Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: BrandColors.orange,
+                        ),
+                      )
+                      : null,
+            ),
+            const SizedBox(width: 10),
+            Text(specialistName),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [Expanded(child: _buildMessageList()), _buildInput()],
+      ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    if (_initialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: BrandColors.orange,
+              ),
+              const SizedBox(height: 12),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _error = null;
+                    _initialLoading = true;
+                  });
+                  _loadInitial();
+                },
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_messages.isEmpty) {
+      return const Center(
+        child: Text(
+          'Напишите сообщение, чтобы начать диалог',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: BrandColors.textSecondary, fontSize: 14),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollCtrl,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      itemCount: _messages.length,
+      itemBuilder: (_, i) {
+        final msg = _messages[i];
+        final showDate =
+            i == 0 || !_sameDay(_messages[i - 1].createdAt, msg.createdAt);
+        return Column(
+          children: [
+            if (showDate) _DateDivider(date: msg.createdAt),
+            _MessageBubble(
+              message: msg,
+              onLongPress: () => _showMessageActions(msg),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildReplyEditPreview() {
+    final message = _editingMessage ?? _replyingTo;
+
+    if (message == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isEditing = _editingMessage != null;
+
+    var preview = message.body.trim();
+
+    if (preview.isEmpty) {
+      if (message.hasAudio) {
+        preview = 'Голосовое сообщение';
+      } else if (message.photoUrl != null && message.photoUrl!.isNotEmpty) {
+        preview = 'Фото';
+      } else if (message.videoUrl != null && message.videoUrl!.isNotEmpty) {
+        preview = 'Видео';
+      } else if (message.fileName != null && message.fileName!.isNotEmpty) {
+        preview = message.fileName!;
+      } else {
+        preview = 'Сообщение';
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 7),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: BrandColors.orange.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 38,
+            decoration: BoxDecoration(
+              color: BrandColors.orange,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEditing ? 'Редактирование' : 'Ответ на сообщение',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: BrandColors.orange,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: BrandColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _cancelReplyOrEdit,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: SvgPicture.asset(
+                  'icons/chat/close.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    BrandColors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput() {
+    if (_isRecordingVoice || _recordedVoiceBytes != null) {
+      return _buildVoiceInput();
+    }
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+        decoration: const BoxDecoration(
+          color: BrandColors.surface,
+          border: Border(top: BorderSide(color: BrandColors.divider)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_replyingTo != null || _editingMessage != null)
+              _buildReplyEditPreview(),
+            if (_pickedImage != null) _buildImagePreview(),
+            if (_pickedFile != null) _buildFilePreview(),
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                /*
+                 * EMOJI
+                 */
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(22),
+                      onTap: _showEmojiPicker,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          'icons/chat/smile.svg',
+                          width: 27,
+                          height: 27,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 5),
+
+                /*
+                 * MESSAGE FIELD
+                 *
+                 * minLines 1 / maxLines 5:
+                 * поле само увеличивается по мере ввода текста.
+                 */
+                Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: BrandColors.divider),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _inputCtrl,
+                            focusNode: _focusNode,
+                            minLines: 1,
+                            maxLines: 5,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.newline,
+                            textCapitalization: TextCapitalization.sentences,
+                            style: const TextStyle(fontSize: 16, height: 1.25),
+                            decoration: const InputDecoration(
+                              hintText: 'Сообщение',
+                              hintStyle: TextStyle(
+                                color: BrandColors.textSecondary,
+                                fontSize: 16,
+                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.fromLTRB(
+                                15,
+                                12,
+                                6,
+                                12,
+                              ),
+                            ),
+                            onChanged: (_) {
+                              setState(() {});
+                            },
+                          ),
+                        ),
+
+                        /*
+                         * ATTACHMENT
+                         */
+                        SizedBox(
+                          width: 43,
+                          height: 44,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(22),
+                              onTap: _showAttachmentMenu,
+                              child: Center(
+                                child: SvgPicture.asset(
+                                  'icons/chat/attach.svg',
+                                  width: 26,
+                                  height: 26,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 7),
+
+                /*
+                 * MIC <-> SEND
+                 */
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 160),
+                  transitionBuilder: (child, animation) {
+                    return ScaleTransition(
+                      scale: animation,
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child:
+                      _sending
+                          ? Container(
+                            key: const ValueKey('sending'),
+                            width: 46,
+                            height: 46,
+                            decoration: const BoxDecoration(
+                              color: BrandColors.orange,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 19,
+                                height: 19,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          )
+                          : _composerHasContent
+                          ? _ChatSvgCircleButton(
+                            key: const ValueKey('send'),
+                            asset: 'icons/chat/send.svg',
+                            tooltip: 'Отправить',
+                            onTap: _send,
+                          )
+                          : _ChatSvgCircleButton(
+                            key: const ValueKey('mic'),
+                            asset: 'icons/chat/mic.svg',
+                            tooltip: 'Записать голосовое сообщение',
+                            onTap: _startVoiceRecording,
+                          ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceInput() {
+    final isDraft = _recordedVoiceBytes != null && !_isRecordingVoice;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+        decoration: const BoxDecoration(
+          color: BrandColors.surface,
+          border: Border(top: BorderSide(color: BrandColors.divider)),
+        ),
+        child: Row(
+          children: [
+            if (_isRecordingVoice) ...[
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _formatVoiceDuration(_voiceRecordDuration),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Запись голосового сообщения...',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: BrandColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              _VoiceComposerSvgButton(
+                asset: 'icons/chat/delete.svg',
+                tooltip: 'Отменить запись',
+                onTap: _cancelVoiceRecording,
+                foregroundColor: BrandColors.textSecondary,
+              ),
+              const SizedBox(width: 7),
+              _VoiceComposerSvgButton(
+                asset: 'icons/chat/stop.svg',
+                tooltip: 'Остановить запись',
+                onTap: _stopVoiceRecording,
+                filled: true,
+              ),
+            ] else if (isDraft) ...[
+              _VoiceComposerSvgButton(
+                asset:
+                    _isVoicePreviewPlaying
+                        ? 'icons/chat/pause.svg'
+                        : 'icons/chat/play.svg',
+                tooltip: _isVoicePreviewPlaying ? 'Пауза' : 'Прослушать',
+                onTap: _toggleVoicePreview,
+                filled: true,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  height: 46,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    borderRadius: BorderRadius.circular(23),
+                    border: Border.all(color: BrandColors.divider),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: List.generate(22, (index) {
+                            final heights = <double>[
+                              8,
+                              14,
+                              20,
+                              12,
+                              25,
+                              17,
+                              10,
+                              22,
+                              15,
+                              27,
+                              11,
+                              19,
+                              24,
+                              13,
+                              21,
+                              9,
+                              17,
+                              26,
+                              12,
+                              20,
+                              15,
+                              8,
+                            ];
+
+                            return Expanded(
+                              child: Center(
+                                child: Container(
+                                  width: 2,
+                                  height: heights[index],
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: BrandColors.orange.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _formatVoiceDuration(_voiceRecordDuration),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              _VoiceComposerSvgButton(
+                asset: 'icons/chat/delete.svg',
+                tooltip: 'Удалить запись',
+                onTap: _cancelVoiceRecording,
+                foregroundColor: BrandColors.textSecondary,
+              ),
+              const SizedBox(width: 7),
+              _sending
+                  ? Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: BrandColors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 19,
+                        height: 19,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                  : _VoiceComposerSvgButton(
+                    asset: 'icons/chat/send.svg',
+                    tooltip: 'Отправить голосовое',
+                    onTap: _sendRecordedVoice,
+                    filled: true,
+                  ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool get _composerHasContent {
+    return _inputCtrl.text.trim().isNotEmpty ||
+        _pickedImage != null ||
+        _pickedFile != null;
+  }
+
+  void _showEmojiPicker() {
+    const emojis = <String>[
+      '😀',
+      '😁',
+      '😂',
+      '😊',
+      '😍',
+      '😘',
+      '😎',
+      '🥰',
+      '😉',
+      '🙂',
+      '🤔',
+      '👍',
+      '👏',
+      '🙏',
+      '❤️',
+      '🔥',
+      '🎉',
+      '✅',
+      '👌',
+      '💯',
+      '🚗',
+      '🔧',
+      '🛠️',
+      '📍',
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: GridView.builder(
+              shrinkWrap: true,
+              itemCount: emojis.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 6,
+                mainAxisSpacing: 4,
+                crossAxisSpacing: 4,
+              ),
+              itemBuilder: (_, index) {
+                final emoji = emojis[index];
+
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    final selection = _inputCtrl.selection;
+
+                    final oldText = _inputCtrl.text;
+
+                    final offset =
+                        selection.isValid ? selection.start : oldText.length;
+
+                    final safeOffset = offset.clamp(0, oldText.length);
+
+                    final newText =
+                        oldText.substring(0, safeOffset) +
+                        emoji +
+                        oldText.substring(safeOffset);
+
+                    _inputCtrl.value = TextEditingValue(
+                      text: newText,
+                      selection: TextSelection.collapsed(
+                        offset: safeOffset + emoji.length,
+                      ),
+                    );
+
+                    Navigator.pop(sheetContext);
+
+                    setState(() {});
+
+                    _focusNode.requestFocus();
+                  },
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 27)),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAttachmentMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.image_outlined,
+                    color: BrandColors.orange,
+                  ),
+                  title: const Text('Фото'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _pickImage();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.attach_file,
+                    color: BrandColors.orange,
+                  ),
+                  title: const Text('Файл'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _pickFile();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _startVoiceRecording() async {
+    if (_sending || _isRecordingVoice) return;
+
+    try {
+      final allowed = await _audioRecorder.hasPermission();
+
+      if (!allowed) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Разрешите доступ к микрофону.')),
+        );
+        return;
+      }
+
+      // Удаляем предыдущую запись, если пользователь решил записать новую.
+      await _voicePreviewPlayer.stop();
+
+      _voiceTimer?.cancel();
+      await _voiceStreamSubscription?.cancel();
+
+      _voicePcmBytes.clear();
+
+      setState(() {
+        _recordedVoiceBytes = null;
+        _voiceRecordDuration = Duration.zero;
+        _isVoicePreviewPlaying = false;
+        _isRecordingVoice = true;
+      });
+
+      const config = RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 16000,
+        numChannels: 1,
+        echoCancel: true,
+        noiseSuppress: true,
+        autoGain: true,
+      );
+
+      final stream = await _audioRecorder.startStream(config);
+
+      _voiceStreamSubscription = stream.listen(
+        (chunk) {
+          _voicePcmBytes.addAll(chunk);
+        },
+        onError: (Object error) {
+          if (!mounted) return;
+
+          _voiceTimer?.cancel();
+
+          setState(() {
+            _isRecordingVoice = false;
+          });
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Ошибка записи: $error')));
+        },
+      );
+
+      _voiceTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted || !_isRecordingVoice) return;
+
+        setState(() {
+          _voiceRecordDuration += const Duration(seconds: 1);
+        });
+      });
+    } catch (e) {
+      _voiceTimer?.cancel();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isRecordingVoice = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось включить микрофон: $e')),
+      );
+    }
+  }
+
+  Future<void> _stopVoiceRecording() async {
+    if (!_isRecordingVoice) return;
+
+    try {
+      _voiceTimer?.cancel();
+      _voiceTimer = null;
+
+      // Для startStream() полные данные гарантированы после закрытия stream.
+      await _audioRecorder.stop();
+      await _voiceStreamSubscription?.asFuture<void>();
+      _voiceStreamSubscription = null;
+
+      if (_voicePcmBytes.isEmpty) {
+        if (!mounted) return;
+
+        setState(() {
+          _isRecordingVoice = false;
+          _recordedVoiceBytes = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось записать голосовое сообщение.'),
+          ),
+        );
+        return;
+      }
+
+      final wav = _pcm16ToWav(
+        Uint8List.fromList(_voicePcmBytes),
+        sampleRate: 16000,
+        channels: 1,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isRecordingVoice = false;
+        _recordedVoiceBytes = wav;
+
+        if (_voiceRecordDuration.inSeconds < 1) {
+          _voiceRecordDuration = const Duration(seconds: 1);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isRecordingVoice = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось завершить запись: $e')),
+      );
+    }
+  }
+
+  Future<void> _cancelVoiceRecording() async {
+    _voiceTimer?.cancel();
+    _voiceTimer = null;
+
+    try {
+      if (_isRecordingVoice) {
+        await _audioRecorder.cancel();
+      }
+    } catch (_) {}
+
+    await _voiceStreamSubscription?.cancel();
+    _voiceStreamSubscription = null;
+
+    try {
+      await _voicePreviewPlayer.stop();
+    } catch (_) {}
+
+    _voicePcmBytes.clear();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isRecordingVoice = false;
+      _isVoicePreviewPlaying = false;
+      _recordedVoiceBytes = null;
+      _voiceRecordDuration = Duration.zero;
+    });
+  }
+
+  Future<void> _toggleVoicePreview() async {
+    final bytes = _recordedVoiceBytes;
+
+    if (bytes == null || bytes.isEmpty) return;
+
+    try {
+      if (_isVoicePreviewPlaying) {
+        await _voicePreviewPlayer.pause();
+
+        if (mounted) {
+          setState(() => _isVoicePreviewPlaying = false);
+        }
+
+        return;
+      }
+
+      if (_voicePreviewPlayer.processingState == ProcessingState.completed) {
+        await _voicePreviewPlayer.seek(Duration.zero);
+      }
+
+      if (_voicePreviewPlayer.audioSource == null) {
+        final uri = Uri.dataFromBytes(bytes, mimeType: 'audio/wav');
+
+        await _voicePreviewPlayer.setUrl(uri.toString());
+      }
+
+      if (mounted) {
+        setState(() => _isVoicePreviewPlaying = true);
+      }
+
+      unawaited(
+        _voicePreviewPlayer.play().whenComplete(() {
+          if (!mounted) return;
+
+          setState(() {
+            _isVoicePreviewPlaying = false;
+          });
+        }),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isVoicePreviewPlaying = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось воспроизвести запись: $e')),
+      );
+    }
+  }
+
+  Future<void> _sendRecordedVoice() async {
+    final bytes = _recordedVoiceBytes;
+
+    if (bytes == null || bytes.isEmpty || _sending) return;
+
+    final durationSeconds =
+        _voiceRecordDuration.inSeconds < 1 ? 1 : _voiceRecordDuration.inSeconds;
+
+    final replyToSend = _replyingTo;
+    final repository = context.read<ChatRepository>();
+
+    setState(() {
+      _sending = true;
+    });
+
+    try {
+      await _voicePreviewPlayer.stop();
+
+      final msg = await repository.sendMessage(
+        widget.conversationId,
+        audioBase64: 'data:audio/wav;base64,${base64Encode(bytes)}',
+        audioDuration: durationSeconds,
+        replyToId: replyToSend?.id,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _messages.add(msg);
+        _lastTimestamp = msg.createdAt.toUtc().toIso8601String();
+
+        _recordedVoiceBytes = null;
+        _voiceRecordDuration = Duration.zero;
+        _isVoicePreviewPlaying = false;
+        _replyingTo = null;
+      });
+
+      _voicePcmBytes.clear();
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось отправить голосовое сообщение: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+      }
+    }
+  }
+
+  Uint8List _pcm16ToWav(
+    Uint8List pcm, {
+    required int sampleRate,
+    required int channels,
+  }) {
+    const bitsPerSample = 16;
+
+    final byteRate = sampleRate * channels * bitsPerSample ~/ 8;
+    final blockAlign = channels * bitsPerSample ~/ 8;
+
+    final result = Uint8List(44 + pcm.length);
+    final data = ByteData.sublistView(result);
+
+    void writeAscii(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        result[offset + i] = value.codeUnitAt(i);
+      }
+    }
+
+    writeAscii(0, 'RIFF');
+    data.setUint32(4, 36 + pcm.length, Endian.little);
+    writeAscii(8, 'WAVE');
+
+    writeAscii(12, 'fmt ');
+    data.setUint32(16, 16, Endian.little);
+    data.setUint16(20, 1, Endian.little);
+    data.setUint16(22, channels, Endian.little);
+    data.setUint32(24, sampleRate, Endian.little);
+    data.setUint32(28, byteRate, Endian.little);
+    data.setUint16(32, blockAlign, Endian.little);
+    data.setUint16(34, bitsPerSample, Endian.little);
+
+    writeAscii(36, 'data');
+    data.setUint32(40, pcm.length, Endian.little);
+
+    result.setRange(44, result.length, pcm);
+
+    return result;
+  }
+
+  String _formatVoiceDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60);
+
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildImagePreview() {
+    return Container(
+      height: 80,
+      margin: const EdgeInsets.only(bottom: 8, left: 8),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              File(_pickedImage!.path),
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _pickedImage!.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          IconButton(
+            onPressed: _clearPickedImage,
+            icon: const Icon(Icons.close, size: 18),
+            color: BrandColors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilePreview() {
+    final name = _pickedFile!.name;
+    final ext = name.contains('.') ? name.split('.').last.toUpperCase() : '?';
+    return Container(
+      height: 60,
+      margin: const EdgeInsets.only(bottom: 8, left: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: BrandColors.orange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                ext,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: BrandColors.orange,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          IconButton(
+            onPressed: _clearPickedFile,
+            icon: const Icon(Icons.close, size: 18),
+            color: BrandColors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+class _VoiceComposerSvgButton extends StatelessWidget {
+  const _VoiceComposerSvgButton({
+    required this.asset,
+    required this.tooltip,
+    required this.onTap,
+    this.filled = false,
+    this.foregroundColor,
+  });
+
+  final String asset;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool filled;
+  final Color? foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor =
+        foregroundColor ?? (filled ? Colors.white : BrandColors.textSecondary);
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: filled ? BrandColors.orange : Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Center(
+              child: SvgPicture.asset(
+                asset,
+                width: 23,
+                height: 23,
+                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatSvgCircleButton extends StatelessWidget {
+  const _ChatSvgCircleButton({
+    super.key,
+    required this.asset,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final String asset;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: BrandColors.orange,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Center(
+              child: SvgPicture.asset(asset, width: 23, height: 23),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DateDivider extends StatelessWidget {
+  const _DateDivider({required this.date});
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    String label;
+    if (now.year == date.year &&
+        now.month == date.month &&
+        now.day == date.day) {
+      label = 'Сегодня';
+    } else if (now.difference(date).inDays == 1) {
+      label = 'Вчера';
+    } else {
+      label = DateFormat('d MMMM', 'ru').format(date);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: BrandColors.divider)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: BrandColors.textSecondary,
+              ),
+            ),
+          ),
+          const Expanded(child: Divider(color: BrandColors.divider)),
+        ],
+      ),
+    );
+  }
+}
+
+class FullScreenImage extends StatefulWidget {
+  final String photoUrl;
+  final String? caption;
+
+  const FullScreenImage({super.key, required this.photoUrl, this.caption});
+
+  @override
+  State<FullScreenImage> createState() => _FullScreenImageState();
+}
+
+class _FullScreenImageState extends State<FullScreenImage> {
+  final _transformationController = TransformationController();
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title:
+            widget.caption != null && widget.caption != 'Фото'
+                ? Text(
+                  widget.caption!,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                )
+                : null,
+      ),
+      body: InteractiveViewer(
+        transformationController: _transformationController,
+        minScale: 1,
+        maxScale: 5,
+        child: Center(
+          child: CachedNetworkImage(
+            imageUrl: widget.photoUrl,
+            placeholder:
+                (_, __) => const Center(
+                  child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+            errorWidget:
+                (_, __, ___) => const Icon(
+                  Icons.broken_image,
+                  color: Colors.white,
+                  size: 64,
+                ),
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _mimeFromName(String name) {
+  if (!name.contains('.')) return 'data:application/octet-stream;';
+  final ext = name.split('.').last.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return 'data:application/pdf;';
+    case 'doc':
+      return 'data:application/msword;';
+    case 'docx':
+      return 'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;';
+    case 'xls':
+      return 'data:application/vnd.ms-excel;';
+    case 'xlsx':
+      return 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;';
+    case 'png':
+      return 'data:image/png;';
+    case 'jpg':
+    case 'jpeg':
+      return 'data:image/jpeg;';
+    case 'gif':
+      return 'data:image/gif;';
+    case 'webp':
+      return 'data:image/webp;';
+    case 'txt':
+      return 'data:text/plain;';
+    case 'csv':
+      return 'data:text/csv;';
+    case 'zip':
+      return 'data:application/zip;';
+    case 'rar':
+      return 'data:application/vnd.rar;';
+    case 'mp4':
+      return 'data:video/mp4;';
+    default:
+      return 'data:application/octet-stream;';
+  }
+}
+
+void _openFullScreenImage(
+  BuildContext context,
+  String photoUrl, {
+  String? caption,
+}) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FullScreenImage(photoUrl: photoUrl, caption: caption),
+    ),
+  );
+}
+
+Future<void> _openDocument(BuildContext context, String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  try {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Не удалось открыть файл')));
+    }
+  }
+}
+
+class _MessageActionTile extends StatelessWidget {
+  const _MessageActionTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final String icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = destructive ? Colors.red : BrandColors.textPrimary;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              icon,
+              width: 23,
+              height: 23,
+              colorFilter: ColorFilter.mode(foreground, BlendMode.srcIn),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: foreground,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageLinkContent extends StatefulWidget {
+  const _MessageLinkContent({required this.text, required this.isClient});
+
+  final String text;
+  final bool isClient;
+
+  @override
+  State<_MessageLinkContent> createState() => _MessageLinkContentState();
+}
+
+class _MessageLinkContentState extends State<_MessageLinkContent> {
+  static final RegExp _urlRegex = RegExp(
+    r'https?://[^\s<>()]+',
+    caseSensitive: false,
+  );
+
+  String? _url;
+  Future<LinkPreview?>? _previewFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MessageLinkContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.text != widget.text) {
+      _prepare();
+    }
+  }
+
+  void _prepare() {
+    final match = _urlRegex.firstMatch(widget.text);
+
+    if (match == null) {
+      _url = null;
+      _previewFuture = null;
+      return;
+    }
+
+    var url = match.group(0);
+
+    if (url == null || url.isEmpty) {
+      _url = null;
+      _previewFuture = null;
+      return;
+    }
+
+    while (url!.endsWith('.') ||
+        url.endsWith(',') ||
+        url.endsWith(';') ||
+        url.endsWith(':') ||
+        url.endsWith('!') ||
+        url.endsWith('?')) {
+      url = url.substring(0, url.length - 1);
+    }
+
+    _url = url;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _url == null) return;
+
+      setState(() {
+        _previewFuture = context.read<ChatRepository>().fetchLinkPreview(_url!);
+      });
+    });
+  }
+
+  Future<void> _openUrl(String value) async {
+    final uri = Uri.tryParse(value);
+
+    if (uri == null) return;
+
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть ссылку')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _url;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildText(),
+
+        if (url != null && _previewFuture != null) ...[
+          const SizedBox(height: 8),
+          FutureBuilder<LinkPreview?>(
+            future: _previewFuture,
+            builder: (context, snapshot) {
+              final preview = snapshot.data;
+
+              if (preview == null) {
+                return const SizedBox.shrink();
+              }
+
+              return _OpenGraphCard(
+                preview: preview,
+                isClient: widget.isClient,
+                onTap: () => _openUrl(preview.url),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildText() {
+    final url = _url;
+
+    if (url == null) {
+      return SelectableText(
+        widget.text,
+        style: TextStyle(
+          fontSize: 15.5,
+          height: 1.32,
+          color: widget.isClient ? Colors.white : BrandColors.textPrimary,
+        ),
+      );
+    }
+
+    final index = widget.text.indexOf(url);
+
+    if (index < 0) {
+      return SelectableText(
+        widget.text,
+        style: TextStyle(
+          fontSize: 15.5,
+          height: 1.32,
+          color: widget.isClient ? Colors.white : BrandColors.textPrimary,
+        ),
+      );
+    }
+
+    final before = widget.text.substring(0, index);
+    final after = widget.text.substring(index + url.length);
+
+    final normalColor =
+        widget.isClient ? Colors.white : BrandColors.textPrimary;
+
+    final linkColor = widget.isClient ? Colors.white : BrandColors.orange;
+
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(fontSize: 15.5, height: 1.32, color: normalColor),
+        children: [
+          if (before.isNotEmpty) TextSpan(text: before),
+
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openUrl(url),
+              child: Text(
+                url,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  height: 1.32,
+                  color: linkColor,
+                  decoration: TextDecoration.underline,
+                  decorationColor: linkColor,
+                ),
+              ),
+            ),
+          ),
+
+          if (after.isNotEmpty) TextSpan(text: after),
+        ],
+      ),
+    );
+  }
+}
+
+class _OpenGraphCard extends StatelessWidget {
+  const _OpenGraphCard({
+    required this.preview,
+    required this.isClient,
+    required this.onTap,
+  });
+
+  final LinkPreview preview;
+  final bool isClient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = preview.image?.trim() ?? '';
+    final title = preview.title?.trim() ?? '';
+    final description = preview.description?.trim() ?? '';
+
+    final site =
+        (preview.siteName?.trim().isNotEmpty ?? false)
+            ? preview.siteName!.trim()
+            : (preview.domain?.trim() ?? '');
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color:
+              isClient
+                  ? Colors.white.withValues(alpha: 0.13)
+                  : Colors.black.withValues(alpha: 0.035),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                isClient
+                    ? Colors.white.withValues(alpha: 0.16)
+                    : BrandColors.divider,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (image.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: image,
+                height: 150,
+                fit: BoxFit.cover,
+                placeholder:
+                    (_, __) => Container(
+                      height: 150,
+                      color:
+                          isClient
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : BrandColors.divider,
+                    ),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              ),
+
+            if (site.isNotEmpty || title.isNotEmpty || description.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (site.isNotEmpty)
+                      Text(
+                        site,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              isClient
+                                  ? Colors.white.withValues(alpha: 0.72)
+                                  : BrandColors.orange,
+                        ),
+                      ),
+
+                    if (site.isNotEmpty && title.isNotEmpty)
+                      const SizedBox(height: 4),
+
+                    if (title.isNotEmpty)
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.25,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isClient ? Colors.white : BrandColors.textPrimary,
+                        ),
+                      ),
+
+                    if (title.isNotEmpty && description.isNotEmpty)
+                      const SizedBox(height: 4),
+
+                    if (description.isNotEmpty)
+                      Text(
+                        description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          height: 1.3,
+                          color:
+                              isClient
+                                  ? Colors.white.withValues(alpha: 0.82)
+                                  : BrandColors.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({required this.message, required this.onLongPress});
+
+  final ChatMessage message;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final isClient = message.isFromClient;
+
+    final time = DateFormat('HH:mm').format(message.createdAt);
+
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
+    final maxBubbleWidth = screenWidth >= 700 ? 520.0 : screenWidth * 0.82;
+
+    final isDocument =
+        message.isDocument || (message.isTemp && message.tempType == 'file');
+
+    final hasPhoto =
+        message.isPhotoMessage ||
+        (message.isTemp && message.tempType == 'image');
+
+    final hasVideo =
+        message.hasVideo || (message.isTemp && message.tempType == 'video');
+
+    final hasAudio = message.hasAudio;
+
+    final isDeleted = message.isDeleted;
+
+    final rawBody = message.body.trim();
+
+    final hasText =
+        !isDeleted &&
+        rawBody.isNotEmpty &&
+        rawBody != 'Фото' &&
+        rawBody != 'Видео' &&
+        rawBody != 'Голосовое сообщение' &&
+        !(message.isTemp &&
+            (message.tempType == 'image' || message.tempType == 'video'));
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onLongPress: message.isTemp ? null : onLongPress,
+      child: Align(
+        alignment: isClient ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: isClient ? BrandColors.orange : BrandColors.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isClient ? 18 : 5),
+                bottomRight: Radius.circular(isClient ? 5 : 18),
+              ),
+              border: isClient ? null : Border.all(color: BrandColors.divider),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.035),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                /*
+               * DELETED
+               */
+                if (isDeleted)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 11, 14, 3),
+                    child: Text(
+                      'Сообщение удалено',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color:
+                            isClient
+                                ? Colors.white.withValues(alpha: 0.75)
+                                : BrandColors.textSecondary,
+                      ),
+                    ),
+                  ),
+
+                /*
+               * VIDEO
+               */
+                if (!isDeleted && hasVideo)
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child:
+                        message.isTemp
+                            ? Container(
+                              width: double.infinity,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                            : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: _InlineVideoPlayer(
+                                url: message.videoUrl!,
+                                isClient: isClient,
+                              ),
+                            ),
+                  ),
+
+                /*
+               * PHOTO
+               */
+                if (!isDeleted && hasPhoto)
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child:
+                          message.isTemp
+                              ? Container(
+                                width: double.infinity,
+                                height: 180,
+                                color: Colors.black.withValues(alpha: 0.05),
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                              : GestureDetector(
+                                onTap:
+                                    () => _openFullScreenImage(
+                                      context,
+                                      message.photoUrl!,
+                                    ),
+                                child: CachedNetworkImage(
+                                  imageUrl: message.photoUrl!,
+                                  width: double.infinity,
+                                  height: 210,
+                                  fit: BoxFit.cover,
+                                  placeholder:
+                                      (_, __) => Container(
+                                        height: 210,
+                                        color: BrandColors.divider,
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  errorWidget:
+                                      (_, __, ___) => Container(
+                                        height: 120,
+                                        padding: const EdgeInsets.all(16),
+                                        color: BrandColors.divider,
+                                        child: const Center(
+                                          child: Text(
+                                            'Не удалось загрузить фото',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                ),
+                              ),
+                    ),
+                  ),
+
+                /*
+               * VOICE
+               */
+                if (!isDeleted && hasAudio)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                    child: _ChatVoiceMessage(
+                      url: message.audioUrl!,
+                      duration: message.audioDuration,
+                      isClient: isClient,
+                    ),
+                  ),
+
+                /*
+               * DOCUMENT
+               */
+                if (!isDeleted && isDocument)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(6, 6, 6, 2),
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(
+                      color:
+                          isClient
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.025),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color:
+                                isClient
+                                    ? Colors.white.withValues(alpha: 0.18)
+                                    : BrandColors.orange.withValues(
+                                      alpha: 0.10,
+                                    ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.insert_drive_file_outlined,
+                            color: isClient ? Colors.white : BrandColors.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            message.fileName ?? 'Файл',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isClient
+                                      ? Colors.white
+                                      : BrandColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (!message.uploading)
+                          IconButton(
+                            tooltip: 'Открыть',
+                            onPressed:
+                                () => _openDocument(context, message.fileUrl!),
+                            icon: Icon(
+                              Icons.open_in_new_rounded,
+                              size: 20,
+                              color:
+                                  isClient ? Colors.white : BrandColors.orange,
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                /*
+               * TEXT
+               */
+                if (hasText)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(13, 10, 13, 1),
+                    child: _MessageLinkContent(
+                      text: message.body,
+                      isClient: isClient,
+                    ),
+                  ),
+
+                /*
+               * META: edited / pin / time
+               */
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 4, 11, 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (message.isPinned) ...[
+                        Icon(
+                          Icons.push_pin_outlined,
+                          size: 12,
+                          color:
+                              isClient
+                                  ? Colors.white.withValues(alpha: 0.72)
+                                  : BrandColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+
+                      if (message.isEdited) ...[
+                        Text(
+                          'изменено',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color:
+                                isClient
+                                    ? Colors.white.withValues(alpha: 0.68)
+                                    : BrandColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+
+                      Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color:
+                              isClient
+                                  ? Colors.white.withValues(alpha: 0.72)
+                                  : BrandColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatVoiceMessage extends StatefulWidget {
+  const _ChatVoiceMessage({
+    required this.url,
+    required this.duration,
+    required this.isClient,
+  });
+
+  final String url;
+  final int? duration;
+  final bool isClient;
+
+  @override
+  State<_ChatVoiceMessage> createState() => _ChatVoiceMessageState();
+}
+
+class _ChatVoiceMessageState extends State<_ChatVoiceMessage> {
+  late final AudioPlayer _player;
+
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  bool _loading = false;
+  bool _playing = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _player = AudioPlayer();
+
+    _duration = Duration(seconds: widget.duration ?? 0);
+
+    _player.positionStream.listen((position) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _position = position;
+      });
+    });
+
+    _player.durationStream.listen((duration) {
+      if (!mounted || duration == null) {
+        return;
+      }
+
+      setState(() {
+        _duration = duration;
+      });
+    });
+
+    _player.playerStateStream.listen((state) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _playing = state.playing;
+
+        if (state.processingState == ProcessingState.completed) {
+          _position = Duration.zero;
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration value) {
+    final seconds = value.inSeconds < 0 ? 0 : value.inSeconds;
+
+    final minutes = seconds ~/ 60;
+    final rest = seconds % 60;
+
+    return '$minutes:${rest.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _togglePlay() async {
+    if (_loading) {
+      return;
+    }
+
+    try {
+      if (_playing) {
+        await _player.pause();
+        return;
+      }
+
+      if (_player.processingState == ProcessingState.completed) {
+        await _player.seek(Duration.zero);
+      }
+
+      if (_player.audioSource == null) {
+        setState(() {
+          _loading = true;
+          _hasError = false;
+        });
+
+        await _player.setUrl(widget.url);
+      }
+
+      await _player.play();
+    } catch (error) {
+      debugPrint('Voice playback error: $error');
+
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isClient = widget.isClient;
+
+    final foreground = isClient ? Colors.white : BrandColors.orange;
+
+    final secondary =
+        isClient
+            ? Colors.white.withValues(alpha: 0.72)
+            : BrandColors.textSecondary;
+
+    final totalMs = _duration.inMilliseconds > 0 ? _duration.inMilliseconds : 1;
+
+    final positionMs = _position.inMilliseconds.clamp(0, totalMs);
+
+    final progress = positionMs / totalMs;
+
+    return SizedBox(
+      width: 260,
+      child: Row(
+        children: [
+          Material(
+            color:
+                isClient
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : BrandColors.orange.withValues(alpha: 0.10),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _togglePlay,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child:
+                      _loading
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: foreground,
+                            ),
+                          )
+                          : SvgPicture.asset(
+                            _playing
+                                ? 'icons/chat/pause.svg'
+                                : 'icons/chat/play.svg',
+                            width: 25,
+                            height: 25,
+                            colorFilter:
+                                isClient
+                                    ? const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
+                                    )
+                                    : null,
+                          ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 24,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: List.generate(24, (index) {
+                      const heights = <double>[
+                        5,
+                        9,
+                        14,
+                        8,
+                        18,
+                        11,
+                        7,
+                        15,
+                        20,
+                        9,
+                        13,
+                        6,
+                        17,
+                        10,
+                        19,
+                        8,
+                        14,
+                        7,
+                        16,
+                        11,
+                        6,
+                        13,
+                        9,
+                        5,
+                      ];
+
+                      final fraction = (index + 1) / 24;
+
+                      final active = fraction <= progress;
+
+                      return Expanded(
+                        child: Center(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 0.7),
+                            height: heights[index],
+                            decoration: BoxDecoration(
+                              color:
+                                  active
+                                      ? foreground
+                                      : foreground.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+
+                const SizedBox(height: 3),
+
+                Row(
+                  children: [
+                    Text(
+                      _formatDuration(
+                        _playing || _position > Duration.zero
+                            ? _position
+                            : _duration,
+                      ),
+                      style: TextStyle(fontSize: 10.5, color: secondary),
+                    ),
+
+                    if (_hasError) ...[
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          'Не удалось воспроизвести',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10, color: secondary),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineVideoPlayer extends StatefulWidget {
+  const _InlineVideoPlayer({required this.url, required this.isClient});
+  final String url;
+  final bool isClient;
+
+  @override
+  State<_InlineVideoPlayer> createState() => _InlineVideoPlayerState();
+}
+
+class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+  String _errorMsg = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() {
+                _isInitialized = true;
+              });
+            }
+          })
+          .catchError((error) {
+            debugPrint("Video init error: $error");
+            if (mounted) {
+              setState(() {
+                _hasError = true;
+                _errorMsg = error.toString();
+              });
+            }
+          });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasError) {
+      return Container(
+        width: 240,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.red.withValues(alpha: 0.7),
+                size: 32,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Не удалось загрузить видео',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _errorMsg,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.red.withValues(alpha: 0.8),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => _openDocument(context, widget.url),
+                icon: const Icon(Icons.open_in_new, size: 14),
+                label: const Text(
+                  'Открыть в браузере',
+                  style: TextStyle(fontSize: 10),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BrandColors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  minimumSize: const Size(100, 28),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_isInitialized) {
+      return Container(
+        width: 240,
+        height: 160,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FullScreenVideoPlayer(url: widget.url),
+          ),
+        );
+      },
+      child: Container(
+        width: 240,
+        constraints: const BoxConstraints(maxHeight: 320),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Colors.black45,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  size: 32,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPlayer extends StatefulWidget {
+  const FullScreenVideoPlayer({super.key, required this.url});
+  final String url;
+
+  @override
+  State<FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+  String _errorMsg = '';
+  bool _showControls = true;
+  Timer? _controlsTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize()
+          .then((_) {
+            if (mounted) {
+              setState(() {
+                _isInitialized = true;
+              });
+              _controller.play();
+              _startControlsTimer();
+            }
+          })
+          .catchError((error) {
+            debugPrint("Full screen video init error: $error");
+            if (mounted) {
+              setState(() {
+                _hasError = true;
+                _errorMsg = error.toString();
+              });
+            }
+          });
+
+    _controller.addListener(_videoListener);
+  }
+
+  void _videoListener() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _startControlsTimer() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _controller.value.isPlaying) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) {
+      _startControlsTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controlsTimer?.cancel();
+    _controller.removeListener(_videoListener);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: _toggleControls,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video Player
+            if (_isInitialized)
+              Center(
+                child: AspectRatio(
+                  aspectRatio: _controller.value.aspectRatio,
+                  child: VideoPlayer(_controller),
+                ),
+              )
+            else if (_hasError)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Не удалось загрузить видео',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMsg,
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => _openDocument(context, widget.url),
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text('Открыть в браузере'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BrandColors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Назад',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+
+            // Controls Overlay
+            if (_isInitialized && _showControls)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black38,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Top Bar
+                      SafeArea(
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
+
+                      // Play/Pause Center Button
+                      Center(
+                        child: IconButton(
+                          icon: Icon(
+                            _controller.value.isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            color: Colors.white,
+                            size: 72,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              if (_controller.value.isPlaying) {
+                                _controller.pause();
+                              } else {
+                                _controller.play();
+                              }
+                            });
+                            _startControlsTimer();
+                          },
+                        ),
+                      ),
+
+                      // Bottom Progress bar & Duration
+                      SafeArea(
+                        top: false,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              VideoProgressIndicator(
+                                _controller,
+                                allowScrubbing: true,
+                                colors: const VideoProgressColors(
+                                  playedColor: BrandColors.orange,
+                                  bufferedColor: Colors.white30,
+                                  backgroundColor: Colors.white12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDuration(_controller.value.position),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatDuration(_controller.value.duration),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+}

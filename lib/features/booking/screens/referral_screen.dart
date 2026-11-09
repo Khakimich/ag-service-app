@@ -1,0 +1,409 @@
+import 'package:mobile/core/nav.dart'; // AG_FIX3
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/theme.dart';
+import '../providers/referrals_provider.dart';
+import '../../../core/i18n.dart'; // AG_I18N1
+
+class ReferralScreen extends StatefulWidget {
+  const ReferralScreen({super.key});
+
+  @override
+  State<ReferralScreen> createState() => _ReferralScreenState();
+}
+
+class _ReferralScreenState extends State<ReferralScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReferralsProvider>().loadSummary();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(leading: const AgBackButton(fallback: '/profile'), title: Text(tr('Пригласить друзей'))), // AG_FIX3
+      body: Consumer<ReferralsProvider>(
+        builder: (context, provider, _) {
+          if (provider.loading && provider.summary == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (provider.error != null && provider.summary == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      size: 48,
+                      color: BrandColors.orange,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      trf('Ошибка загрузки: {0}', [provider.error]),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: provider.loadSummary,
+                      child: Text(tr('Повторить')),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final summary = provider.summary;
+          if (summary == null) {
+            return Center(child: Text(tr('Нет данных')));
+          }
+
+          final referralUrl = 'https://autogrom.ru/ref/${summary.referralCode}';
+
+          return RefreshIndicator(
+            onRefresh: provider.loadSummary,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+              children: [
+                Text(
+                  tr('Реферальная программа'),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Points Balance Card
+                Card(
+                  elevation: 0,
+                  color: BrandColors.orange.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: BrandColors.orange.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.wallet_giftcard_rounded,
+                          size: 48,
+                          color: BrandColors.orange,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          tr('Ваш баланс бонусов'),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          trf('{0} баллов', [summary.bonusPoints]),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: BrandColors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Share Link Section
+                Text(
+                  tr('Приглашайте друзей'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  tr('Делитесь ссылкой ниже. Друг получит приветственные баллы, а вы получите бонусы за его регистрацию и первый визит!'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Referral Link Copy Row
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          referralUrl,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: referralUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                tr('Реферальная ссылка скопирована в буфер обмена'),
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.copy_rounded,
+                          color: BrandColors.orange,
+                        ),
+                        tooltip: tr('Копировать'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Referral Program Rules
+                Text(
+                  tr('Правила начисления'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _RuleTile(
+                  icon: Icons.person_add_alt_1_rounded,
+                  title: tr('Регистрация по ссылке'),
+                  description:
+                      tr('Вашему другу начисляется 100 приветственных баллов.'),
+                ),
+                _RuleTile(
+                  icon: Icons.celebration_rounded,
+                  title: tr('Приглашение принято'),
+                  description:
+                      tr('Вам начисляется 50 баллов, когда друг регистрируется.'),
+                ),
+                _RuleTile(
+                  icon: Icons.check_circle_outline_rounded,
+                  title: tr('Первый визит друга'),
+                  description:
+                      tr('Вам начисляется 200 баллов, когда ваш приглашенный друг впервые завершает обслуживание в сервисе.'),
+                ),
+                const SizedBox(height: 32),
+
+                // Referred Friends list
+                Text(
+                  trf('Приглашенные друзья ({0})', [summary.referrals.length]),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                if (summary.referrals.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        tr('Вы еще не пригласили друзей.\nСамое время поделиться ссылкой!'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: summary.referrals.length,
+                    separatorBuilder:
+                        (context, index) => Divider(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                    itemBuilder: (context, index) {
+                      final item = summary.referrals[index];
+                      final isFirstVisit = item.status == 'first_visit';
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              isFirstVisit
+                                  ? BrandColors.orange.withValues(alpha: 0.15)
+                                  : Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            isFirstVisit
+                                ? Icons.done_all_rounded
+                                : Icons.person_outline_rounded,
+                            color:
+                                isFirstVisit
+                                    ? BrandColors.orange
+                                    : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        title: Text(
+                          item.refereeName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          trf('Регистрация: {0}', [DateFormat('dd.MM.yyyy').format(item.refereeRegisteredAt)]),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isFirstVisit
+                                    ? BrandColors.orange.withValues(alpha: 0.1)
+                                    : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  isFirstVisit
+                                      ? BrandColors.orange.withValues(
+                                        alpha: 0.2,
+                                      )
+                                      : Colors.transparent,
+                            ),
+                          ),
+                          child: Text(
+                            isFirstVisit ? tr('Первый визит') : tr('Зарегистрирован'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isFirstVisit
+                                      ? BrandColors.orange
+                                      : Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _RuleTile extends StatelessWidget {
+  const _RuleTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: BrandColors.orange, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

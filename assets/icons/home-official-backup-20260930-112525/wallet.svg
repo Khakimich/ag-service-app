@@ -1,0 +1,23 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="body" x1="13" y1="12" x2="50" y2="54" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FF9B4A"/>
+    <stop offset="0.48" stop-color="#FF6508"/>
+    <stop offset="1" stop-color="#D93D00"/>
+  </linearGradient>
+  <linearGradient id="metal" x1="36" y1="25" x2="54" y2="42" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#4B4F58"/>
+    <stop offset="1" stop-color="#17191D"/>
+  </linearGradient>
+  <filter id="shadow" x="4" y="7" width="57" height="54" filterUnits="userSpaceOnUse">
+    <feDropShadow dx="0" dy="5" stdDeviation="4" flood-opacity=".22"/>
+  </filter>
+</defs>
+<g filter="url(#shadow)">
+  <rect x="10" y="14" width="43" height="36" rx="11" fill="url(#body)"/>
+  <path d="M13 21C19 15 34 15 47 19" stroke="white" stroke-opacity=".34" stroke-width="3" stroke-linecap="round"/>
+  <rect x="35" y="25" width="22" height="17" rx="7" fill="url(#metal)"/>
+  <circle cx="43" cy="33.5" r="3.2" fill="#FF7A18"/>
+  <circle cx="42" cy="32.5" r="1.1" fill="white" fill-opacity=".7"/>
+</g>
+</svg>

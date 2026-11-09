@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "900012233834",
+    "project_id": "ag-service-afe64",
+    "storage_bucket": "ag-service-afe64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:900012233834:android:65a5e8ebbda7575d5ae613",
+        "android_client_info": {
+          "package_name": "ag.service.ru"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy5MG2GLQl3I9M02IV36QN4Kq_wANaeIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:900012233834:android:5253549fe6fd66e85ae613",
+        "android_client_info": {
+          "package_name": "auto.grom.service"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy5MG2GLQl3I9M02IV36QN4Kq_wANaeIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,45 @@
+class ChatConversation {
+  ChatConversation({
+    required this.id,
+    required this.userId,
+    this.specialistId,
+    this.specialistName,
+    this.specialistPhotoUrl,
+    this.lastMessageAt,
+    this.lastMessageBody,
+    this.lastMessageSender,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String userId;
+  final String? specialistId;
+  final String? specialistName;
+  final String? specialistPhotoUrl;
+  final DateTime? lastMessageAt;
+  final String? lastMessageBody;   // denormalised preview — no messages join needed
+  final String? lastMessageSender; // 'client' | 'business'
+  final DateTime createdAt;
+
+  bool get hasMessages => lastMessageBody != null;
+
+  String get displayName => specialistName ?? 'Специалист';
+
+  factory ChatConversation.fromJson(Map<String, dynamic> json) {
+    final specialistJson = json['specialist'] as Map<String, dynamic>?;
+
+    return ChatConversation(
+      id: json['id'] as String,
+      userId: json['user_id'] as String,
+      specialistId: json['specialist_id'] as String?,
+      specialistName: specialistJson?['full_name'] as String?,
+      specialistPhotoUrl: specialistJson?['photo_url'] as String?,
+      lastMessageAt: json['last_message_at'] != null
+          ? DateTime.parse(json['last_message_at'] as String).toLocal()
+          : null,
+      lastMessageBody: json['last_message_body'] as String?,
+      lastMessageSender: json['last_message_sender'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+    );
+  }
+}

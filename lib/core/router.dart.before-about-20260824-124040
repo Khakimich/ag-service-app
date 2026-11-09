@@ -1,0 +1,83 @@
+import 'package:go_router/go_router.dart';
+
+import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/register_screen.dart';
+import '../features/booking/screens/anniversary_welcome_screen.dart';
+import '../features/booking/screens/booking_confirmation_screen.dart';
+import '../features/booking/screens/booking_success_screen.dart';
+import '../features/booking/screens/datetime_selection_screen.dart';
+import '../features/booking/screens/home_screen.dart';
+import '../features/booking/screens/my_bookings_screen.dart';
+import '../features/booking/screens/profile_screen.dart';
+import '../features/booking/screens/reschedule_screen.dart';
+import '../features/booking/screens/service_detail_screen.dart';
+import '../features/booking/screens/services_list_screen.dart';
+import '../features/booking/screens/specialist_selection_screen.dart';
+import '../features/chat/screens/chat_screen.dart';
+import '../features/chat/screens/chats_screen.dart';
+import '../features/my_cars/screens/my_cars_screen.dart';
+import '../features/booking/screens/notifications_screen.dart';
+import '../features/booking/screens/referral_screen.dart';
+import '../models/booking_with_details.dart';
+import '../models/chat_conversation.dart';
+import 'main_shell.dart';
+
+final appRouter = GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(
+      path: '/welcome',
+      builder: (_, __) => const AnniversaryWelcomeScreen(),
+    ),
+    ShellRoute(
+      builder: (context, state, child) => MainShell(child: child),
+      routes: [
+        GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
+        GoRoute(
+          path: '/services',
+          builder: (context, state) {
+            final search = state.uri.queryParameters['search'];
+            return ServicesListScreen(initialSearch: search);
+          },
+          routes: [
+            GoRoute(
+              path: ':id',
+              builder: (_, state) =>
+                  ServiceDetailScreen(serviceId: state.pathParameters['id']!),
+            ),
+          ],
+        ),
+        GoRoute(path: '/bookings', builder: (_, __) => const MyBookingsScreen()),
+        GoRoute(path: '/chats', builder: (_, __) => const ChatsScreen()),
+        GoRoute(
+          path: '/profile',
+          builder: (_, __) => const ProfileScreen(),
+          routes: [
+            GoRoute(path: 'my-cars', builder: (_, __) => const MyCarsScreen()),
+            GoRoute(path: 'notifications', builder: (_, __) => const NotificationsScreen()),
+            GoRoute(path: 'referrals', builder: (_, __) => const ReferralScreen()),
+          ],
+        ),
+      ],
+    ),
+    GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+    GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+    GoRoute(
+      path: '/chats/:id',
+      builder: (_, state) => ChatScreen(
+        conversationId: state.pathParameters['id']!,
+        conversation: state.extra as ChatConversation?,
+      ),
+    ),
+    GoRoute(path: '/booking/specialist', builder: (_, __) => const SpecialistSelectionScreen()),
+    GoRoute(path: '/booking/datetime', builder: (_, __) => const DateTimeSelectionScreen()),
+    GoRoute(path: '/booking/confirm', builder: (_, __) => const BookingConfirmationScreen()),
+    GoRoute(path: '/booking/success', builder: (_, __) => const BookingSuccessScreen()),
+    GoRoute(
+      path: '/booking/reschedule',
+      builder: (_, state) => RescheduleScreen(
+        booking: state.extra as BookingWithDetails,
+      ),
+    ),
+  ],
+);

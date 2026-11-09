@@ -1,0 +1,654 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/theme.dart';
+import '../../../models/chat_conversation.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../data/chat_repository.dart';
+
+class ChatsScreen extends StatefulWidget {
+  const ChatsScreen({super.key});
+
+  @override
+  State<ChatsScreen> createState() => _ChatsScreenState();
+}
+
+class _ChatsScreenState extends State<ChatsScreen> {
+  List<ChatConversation> _conversations = [];
+  List<ChatDepartment> _departments = [];
+
+  bool _loading = false;
+  bool? _wasLoggedIn;
+  String? _error;
+  String? _openingDepartment;
+
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final loggedIn =
+          context.read<AuthProvider>().isLoggedIn;
+
+      _wasLoggedIn = loggedIn;
+
+      if (loggedIn) {
+        _load();
+      }
+    });
+
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        if (!mounted) return;
+
+        if (context.read<AuthProvider>().isLoggedIn) {
+          _load(silent: true);
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({
+    bool silent = false,
+  }) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final repo =
+          context.read<ChatRepository>();
+
+      final results = await Future.wait([
+        repo.listDepartments(),
+        repo.listConversations(),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _departments =
+            results[0] as List<ChatDepartment>;
+
+        _conversations =
+            results[1] as List<ChatConversation>;
+      });
+    } catch (e) {
+      if (mounted && !silent) {
+        setState(() {
+          _error = e.toString();
+        });
+      }
+    } finally {
+      if (mounted && !silent) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openDepartment(
+    ChatDepartment department,
+  ) async {
+    if (_openingDepartment != null) {
+      return;
+    }
+
+    setState(() {
+      _openingDepartment = department.code;
+    });
+
+    try {
+      final conversation =
+          await context
+              .read<ChatRepository>()
+              .getOrCreateDepartmentConversation(
+                department.code,
+              );
+
+      if (!mounted) return;
+
+      await context.push(
+        '/chats/${conversation.id}',
+        extra: conversation,
+      );
+
+      if (mounted) {
+        await _load(silent: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Не удалось открыть чат: $e',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _openingDepartment = null;
+        });
+      }
+    }
+  }
+
+  IconData _departmentIcon(
+    String code,
+  ) {
+    switch (code) {
+      case 'autogrom_service':
+        return Icons.car_repair_rounded;
+
+      case 'm_service':
+        return Icons.build_circle_outlined;
+
+      case 'autogrom_shop':
+        return Icons.shopping_cart_rounded;
+
+      case 'taxi_park':
+        return Icons.local_taxi_rounded;
+
+      default:
+        return Icons.chat_bubble_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth =
+        context.watch<AuthProvider>();
+
+    if (_wasLoggedIn != null &&
+        _wasLoggedIn != auth.isLoggedIn) {
+      _wasLoggedIn = auth.isLoggedIn;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        if (auth.isLoggedIn) {
+          _load();
+        } else {
+          setState(() {
+            _departments = [];
+            _conversations = [];
+          });
+        }
+      });
+    }
+
+    if (!auth.isLoggedIn) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.support_agent_rounded,
+                  size: 70,
+                  color: BrandColors.orange,
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Чат с поддержкой',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Войдите в аккаунт, чтобы написать нам.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BrandColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                ElevatedButton(
+                  onPressed: () =>
+                      context.push('/login'),
+                  child: const Text('Войти'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_loading &&
+        _departments.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null &&
+        _departments.isEmpty) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: BrandColors.orange,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: _load,
+                  child: const Text(
+                    'Повторить',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics:
+              const AlwaysScrollableScrollPhysics(),
+          padding:
+              const EdgeInsets.fromLTRB(
+            16,
+            18,
+            16,
+            110,
+          ),
+          children: [
+            _welcomeCard(),
+
+            const SizedBox(height: 22),
+
+            const Text(
+              'Выберите направление',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            const Text(
+              'Мы направим ваш вопрос нужному сотруднику.',
+              style: TextStyle(
+                color:
+                    BrandColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            ..._departments.map(
+              (department) => Padding(
+                padding:
+                    const EdgeInsets.only(
+                  bottom: 10,
+                ),
+                child: _departmentCard(
+                  department,
+                ),
+              ),
+            ),
+
+            if (_conversations.isNotEmpty) ...[
+              const SizedBox(height: 20),
+
+              const Text(
+                'Ваши диалоги',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight:
+                      FontWeight.w800,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              ..._conversations.map(
+                _conversationCard,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _welcomeCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color:
+            BrandColors.orange
+                .withValues(alpha: 0.08),
+        borderRadius:
+            BorderRadius.circular(22),
+        border: Border.all(
+          color:
+              BrandColors.orange
+                  .withValues(alpha: 0.20),
+        ),
+      ),
+      child: const Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor:
+                    BrandColors.orange,
+                child: Icon(
+                  Icons.support_agent_rounded,
+                  color: Colors.white,
+                  size: 27,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Здравствуйте! 👋',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight:
+                        FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Добро пожаловать в AG Service.',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Чтобы мы быстрее направили ваш вопрос нужному сотруднику, выберите раздел.',
+            style: TextStyle(
+              color:
+                  BrandColors.textSecondary,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _departmentCard(
+    ChatDepartment department,
+  ) {
+    final loading =
+        _openingDepartment ==
+            department.code;
+
+    return Material(
+      color: Colors.white,
+      borderRadius:
+          BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius:
+            BorderRadius.circular(18),
+        onTap: loading
+            ? null
+            : () => _openDepartment(
+                  department,
+                ),
+        child: Container(
+          padding:
+              const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(
+                0xFFE8E8E8,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color:
+                      BrandColors.orange
+                          .withValues(
+                            alpha: 0.10,
+                          ),
+                  borderRadius:
+                      BorderRadius.circular(
+                        15,
+                      ),
+                ),
+                child: Icon(
+                  _departmentIcon(
+                    department.code,
+                  ),
+                  color:
+                      BrandColors.orange,
+                  size: 27,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+                  children: [
+                    Text(
+                      department.title,
+                      style:
+                          const TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight
+                                .w800,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      department.subtitle,
+                      style:
+                          const TextStyle(
+                        color:
+                            BrandColors
+                                .textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              loading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child:
+                          CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color:
+                            BrandColors
+                                .orange,
+                      ),
+                    )
+                  : const Icon(
+                      Icons
+                          .chevron_right_rounded,
+                      color:
+                          BrandColors
+                              .orange,
+                      size: 30,
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _conversationCard(
+    ChatConversation conversation,
+  ) {
+    return Padding(
+      padding:
+          const EdgeInsets.only(
+        bottom: 10,
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.circular(17),
+        child: InkWell(
+          borderRadius:
+              BorderRadius.circular(17),
+          onTap: () =>
+              context.push(
+            '/chats/${conversation.id}',
+            extra: conversation,
+          ),
+          child: Container(
+            padding:
+                const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              borderRadius:
+                  BorderRadius.circular(
+                    17,
+                  ),
+              border: Border.all(
+                color: const Color(
+                  0xFFE8E8E8,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 23,
+                  backgroundColor:
+                      BrandColors.orange
+                          .withValues(
+                            alpha: 0.10,
+                          ),
+                  child: Icon(
+                    _departmentIcon(
+                      conversation
+                              .department ??
+                          '',
+                    ),
+                    color:
+                        BrandColors.orange,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
+                    children: [
+                      Text(
+                        conversation
+                            .displayName,
+                        style:
+                            const TextStyle(
+                          fontWeight:
+                              FontWeight
+                                  .w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 4,
+                      ),
+                      Text(
+                        conversation
+                                .lastMessageBody ??
+                            'Открыть чат',
+                        maxLines: 1,
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+                        style:
+                            const TextStyle(
+                          color:
+                              BrandColors
+                                  .textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Icon(
+                  Icons
+                      .chevron_right_rounded,
+                  color:
+                      BrandColors.orange,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

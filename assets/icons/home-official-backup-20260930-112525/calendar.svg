@@ -1,0 +1,24 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="g" x1="15" y1="12" x2="49" y2="53">
+    <stop stop-color="#FF9A47"/>
+    <stop offset=".5" stop-color="#FF6508"/>
+    <stop offset="1" stop-color="#D83D00"/>
+  </linearGradient>
+  <filter id="s" x="6" y="7" width="53" height="53">
+    <feDropShadow dx="0" dy="5" stdDeviation="4" flood-opacity=".22"/>
+  </filter>
+</defs>
+<g filter="url(#s)">
+  <rect x="12" y="15" width="40" height="37" rx="11" fill="url(#g)"/>
+  <rect x="12" y="25" width="40" height="27" rx="9" fill="white"/>
+  <path d="M21 12V20M43 12V20" stroke="#2B2D31" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="23" cy="34" r="3" fill="#FF6508"/>
+  <circle cx="32" cy="34" r="3" fill="#FFD0B3"/>
+  <circle cx="41" cy="34" r="3" fill="#FFD0B3"/>
+  <circle cx="23" cy="43" r="3" fill="#FFD0B3"/>
+  <circle cx="32" cy="43" r="3" fill="#FF6508"/>
+  <circle cx="41" cy="43" r="3" fill="#FFD0B3"/>
+  <path d="M17 19C25 15 39 15 47 19" stroke="white" stroke-opacity=".32" stroke-width="2"/>
+</g>
+</svg>

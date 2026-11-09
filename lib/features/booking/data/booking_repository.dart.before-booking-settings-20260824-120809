@@ -1,0 +1,111 @@
+import '../../../core/api_client.dart';
+import '../../../models/booking.dart';
+import '../../../models/booking_with_details.dart';
+import '../../../models/service.dart';
+import '../../../models/slot.dart';
+import '../../../models/specialist.dart';
+import '../../../models/work_example.dart';
+
+class BookingRepository {
+  BookingRepository(this._api);
+  final ApiClient _api;
+
+  Future<List<Service>> listServices() async {
+    final data = await _api.get('/api/services') as Map<String, dynamic>;
+    final raw = data['services'] as List<dynamic>;
+    return raw
+        .map((e) => Service.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<ServiceDetail> serviceDetail(String id) async {
+    final data = await _api.get('/api/services/$id') as Map<String, dynamic>;
+    final service = Service.fromJson(data['service'] as Map<String, dynamic>);
+    final specialists = (data['specialists'] as List<dynamic>)
+        .map((e) => Specialist.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+    final workExamples = (data['work_examples'] as List<dynamic>? ?? [])
+        .map((e) => WorkExample.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+    return ServiceDetail(
+      service: service,
+      specialists: specialists,
+      workExamples: workExamples,
+    );
+  }
+
+  Future<List<Slot>> slots({
+    required String specialistId,
+    required DateTime date,
+    required int durationMinutes,
+  }) async {
+    final dateStr = _formatDate(date);
+    final data = await _api.get(
+      '/api/specialists/$specialistId/slots',
+      query: {'date': dateStr, 'duration': durationMinutes},
+    ) as Map<String, dynamic>;
+    final raw = data['slots'] as List<dynamic>;
+    return raw
+        .map((e) => Slot.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<Booking> createBooking({
+    required String serviceId,
+    required String specialistId,
+    required DateTime scheduledAt,
+    required String customerName,
+    required String customerPhone,
+    String? carId,
+  }) async {
+    final data = await _api.post('/api/bookings', {
+      'service_id': serviceId,
+      'specialist_id': specialistId,
+      'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+      'customer_name': customerName,
+      'customer_phone': customerPhone,
+      if (carId != null) 'car_id': carId,
+    }) as Map<String, dynamic>;
+    return Booking.fromJson(data['booking'] as Map<String, dynamic>);
+  }
+
+  Future<List<BookingWithDetails>> myBookingsByUser() async {
+    final data =
+        await _api.get('/api/bookings/mine') as Map<String, dynamic>;
+    final raw = data['bookings'] as List<dynamic>;
+    return raw
+        .map((e) => BookingWithDetails.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<void> cancelBooking(String id) async {
+    await _api.patch('/api/bookings/$id/cancel', {});
+  }
+
+  Future<void> rescheduleBooking(String id, DateTime newScheduledAt) async {
+    await _api.patch('/api/bookings/$id/reschedule', {
+      'scheduled_at': newScheduledAt.toUtc().toIso8601String(),
+    });
+  }
+
+  Future<void> deleteBooking(String id) async {
+    await _api.patch('/api/bookings/$id/remove', {});
+  }
+
+  String _formatDate(DateTime d) {
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$m-$day';
+  }
+}
+
+class ServiceDetail {
+  ServiceDetail({
+    required this.service,
+    required this.specialists,
+    required this.workExamples,
+  });
+  final Service service;
+  final List<Specialist> specialists;
+  final List<WorkExample> workExamples;
+}

@@ -1,0 +1,21 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="o" x1="12" y1="9" x2="53" y2="56">
+<stop stop-color="#FF8B2B"/>
+<stop offset="1" stop-color="#F45100"/>
+</linearGradient>
+<linearGradient id="m" x1="17" y1="15" x2="49" y2="52">
+<stop stop-color="#44484E"/>
+<stop offset="1" stop-color="#17191C"/>
+</linearGradient>
+</defs>
+<rect x="8" y="12" width="48" height="45" rx="11" fill="url(#m)"/>
+<path d="M8 23C8 16.9 12.9 12 19 12H45C51.1 12 56 16.9 56 23V27H8V23Z" fill="url(#o)"/>
+<path d="M19 7V17M45 7V17" stroke="#202226" stroke-width="5" stroke-linecap="round"/>
+<rect x="14" y="32" width="8" height="7" rx="2" fill="#FF6A00"/>
+<rect x="28" y="32" width="8" height="7" rx="2" fill="#F1F2F3"/>
+<rect x="42" y="32" width="8" height="7" rx="2" fill="#F1F2F3"/>
+<rect x="14" y="44" width="8" height="7" rx="2" fill="#F1F2F3"/>
+<rect x="28" y="44" width="8" height="7" rx="2" fill="#FF6A00"/>
+<rect x="42" y="44" width="8" height="7" rx="2" fill="#F1F2F3"/>
+</svg>

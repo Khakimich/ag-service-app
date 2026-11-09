@@ -1,0 +1,114 @@
+import 'dart:ui' show ImageFilter;
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'theme.dart';
+
+class MainShell extends StatelessWidget {
+  const MainShell({super.key, required this.child});
+  final Widget child;
+
+  int _tabIndex(String location) {
+    if (location.startsWith('/bookings')) return 1;
+    if (location.startsWith('/profile/my-cars')) return 2;
+    if (location.startsWith('/profile/referrals')) return 3;
+    if (location == '/profile') return 4;
+    return 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    final currentIndex = _tabIndex(location);
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Scaffold(
+      extendBody: true,
+      body: child,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.85),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: EdgeInsets.only(
+                top: 10,
+                bottom: bottomPadding > 0 ? bottomPadding : 10,
+                left: 8,
+                right: 8,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildTabItem(context, 0, Icons.home_outlined, Icons.home_rounded, 'Главная', currentIndex == 0),
+                  _buildTabItem(context, 1, Icons.calendar_month_outlined, Icons.calendar_month, 'Записи', currentIndex == 1),
+                  _buildTabItem(context, 2, Icons.directions_car_outlined, Icons.directions_car_rounded, 'Авто', currentIndex == 2),
+                  _buildTabItem(context, 3, Icons.people_outline_rounded, Icons.people_rounded, 'Рефералы', currentIndex == 3),
+                  _buildTabItem(context, 4, Icons.person_outline_rounded, Icons.person_rounded, 'Профиль', currentIndex == 4),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem(BuildContext context, int index, IconData icon, IconData activeIcon, String label, bool isActive) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          switch (index) {
+            case 0: context.go('/');
+            case 1: context.go('/bookings');
+            case 2: context.go('/profile/my-cars');
+            case 3: context.go('/profile/referrals');
+            case 4: context.go('/profile');
+          }
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              scale: isActive ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: Icon(
+                isActive ? activeIcon : icon,
+                color: isActive ? BrandColors.orange : BrandColors.textSecondary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? BrandColors.orange : BrandColors.textSecondary,
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

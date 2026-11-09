@@ -1,0 +1,94 @@
+name: mobile
+description: "AG Service client mobile app."
+publish_to: 'none'
+version: 0.1.12+14
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  go_router: ^14.2.7
+  http: ^1.2.2
+  intl: any
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  file_picker: ^8.0.0
+  url_launcher: ^6.3.2
+  shared_preferences: ^2.3.2
+
+  # Р СџР С•Р В»РЎС“РЎвЂЎР ВµР Р…Р С‘Р Вµ referral-Р С”Р С•Р Т‘Р В° Р С—Р С•РЎРѓР В»Р Вµ РЎС“РЎРѓРЎвЂљР В°Р Р…Р С•Р Р†Р С”Р С‘ Р С‘Р В· Google Play
+  play_install_referrer: ^0.5.0
+
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.1
+  video_player: ^2.10.1
+  flutter_svg: ^2.3.0
+  just_audio: ^0.10.6
+  record: ^7.1.1
+  local_auth: ^3.0.2
+  flutter_secure_storage: ^10.3.4
+  flutter_cache_manager: ^3.4.5
+  package_info_plus: ^9.0.1
+  add_2_calendar: ^3.1.1
+  flutter_local_notifications: ^22.3.1
+  geolocator: ^14.0.1
+  mobile_scanner: ^7.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/auth/
+    - assets/icons/
+    - assets/icons/nav/
+    - assets/icons/bonus_levels/
+    - assets/logo.png
+    - assets/icons/
+    - assets/icons/auth/
+    - assets/icons/
+    - assets/icons/services/
+    - assets/icons/
+    - assets/icons/services/categories/
+    - assets/icons/
+    - assets/icons/auth/
+    - assets/icons/
+    - assets/icons/profile/
+    - assets/icons/
+    - assets/icons/auth/
+    - assets/icons/
+    - assets/icons/home/
+    - assets/home_v3/
+    - assets/car_logos/
+    - assets/icons/
+    - assets/icons/auth/
+    - assets/icons/
+    - assets/icons/chat/
+    - assets/icons/
+    - assets/icons/auth/
+    - assets/icons/
+    - assets/icons/car_form/
+
+
+
+

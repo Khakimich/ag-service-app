@@ -1,0 +1,554 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../providers/company_provider.dart';
+
+class AboutServiceScreen extends StatefulWidget {
+  const AboutServiceScreen({super.key});
+
+  @override
+  State<AboutServiceScreen> createState() => _AboutServiceScreenState();
+}
+
+class _AboutServiceScreenState extends State<AboutServiceScreen> {
+  static const orange = Color(0xFFFF6A00);
+  static const softOrange = Color(0xFFFFF3EA);
+  static const border = Color(0xFFE8E8E8);
+  static const muted = Color(0xFF747474);
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<CompanyProvider>().loadAll();
+    });
+  }
+
+  Future<void> _call(String phone) async {
+    final cleaned = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+
+    if (cleaned.isEmpty) return;
+
+    final uri = Uri(
+      scheme: 'tel',
+      path: cleaned,
+    );
+
+    await launchUrl(uri);
+  }
+
+  Future<void> _openMap({
+    required String coordinates,
+    required String address,
+  }) async {
+    final query =
+        coordinates.trim().isNotEmpty
+            ? coordinates.trim()
+            : address.trim();
+
+    if (query.isEmpty) return;
+
+    final uri = Uri.https(
+      'www.google.com',
+      '/maps/search/',
+      {
+        'api': '1',
+        'query': query,
+      },
+    );
+
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final company = context.watch<CompanyProvider>();
+    final profile = company.profile;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F8),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'О сервисе',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        color: orange,
+        onRefresh: () =>
+            context.read<CompanyProvider>().loadAll(),
+        child: profile == null
+            ? ListView(
+                physics:
+                    const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 220),
+                  Center(
+                    child: CircularProgressIndicator(
+                      color: orange,
+                    ),
+                  ),
+                ],
+              )
+            : ListView(
+                physics:
+                    const AlwaysScrollableScrollPhysics(),
+                padding:
+                    const EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  120,
+                ),
+                children: [
+
+                  // ==================================================
+                  // LOGO + NAME
+                  // ==================================================
+
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.circular(24),
+                      border:
+                          Border.all(color: border),
+                    ),
+                    child: Column(
+                      children: [
+
+                        if (profile.logoUrl != null &&
+                            profile.logoUrl!.trim().isNotEmpty)
+
+                          ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(18),
+                            child: CachedNetworkImage(
+                              imageUrl:
+                                  profile.logoUrl!,
+                              height: 92,
+                              width: 130,
+                              fit: BoxFit.contain,
+                              placeholder:
+                                  (_, __) =>
+                                      const SizedBox(
+                                height: 92,
+                                child: Center(
+                                  child:
+                                      CircularProgressIndicator(
+                                    color: orange,
+                                  ),
+                                ),
+                              ),
+                              errorWidget:
+                                  (_, __, ___) =>
+                                      Image.asset(
+                                'assets/logo.png',
+                                height: 92,
+                                width: 130,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          )
+                        else
+                          Image.asset(
+                            'assets/logo.png',
+                            height: 92,
+                            width: 130,
+                            fit: BoxFit.contain,
+                          ),
+
+                        const SizedBox(height: 14),
+
+                        Text(
+                          profile.name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight:
+                                FontWeight.w900,
+                            letterSpacing: -.5,
+                          ),
+                        ),
+
+                        if (profile.description
+                            .trim()
+                            .isNotEmpty) ...[
+
+                          const SizedBox(height: 10),
+
+                          Text(
+                            profile.description,
+                            textAlign:
+                                TextAlign.center,
+                            style:
+                                const TextStyle(
+                              color: muted,
+                              fontSize: 14,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // ==================================================
+                  // CAROUSEL
+                  // ==================================================
+
+                  if (profile.carouselUrls.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      height: 190,
+                      child: PageView.builder(
+                        itemCount:
+                            profile.carouselUrls.length,
+                        itemBuilder:
+                            (context, index) {
+
+                          final url =
+                              profile.carouselUrls[index];
+
+                          return Padding(
+                            padding:
+                                const EdgeInsets.only(
+                              right: 8,
+                            ),
+                            child: ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                22,
+                              ),
+                              child:
+                                  CachedNetworkImage(
+                                imageUrl: url,
+                                fit: BoxFit.cover,
+                                placeholder:
+                                    (_, __) =>
+                                        Container(
+                                  color: Colors.white,
+                                  alignment:
+                                      Alignment.center,
+                                  child:
+                                      const CircularProgressIndicator(
+                                    color: orange,
+                                  ),
+                                ),
+                                errorWidget:
+                                    (_, __, ___) =>
+                                        Container(
+                                  color: Colors.white,
+                                  alignment:
+                                      Alignment.center,
+                                  child: const Icon(
+                                    Icons
+                                        .broken_image_outlined,
+                                    color: muted,
+                                    size: 42,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  // ==================================================
+                  // INFORMATION
+                  // ==================================================
+
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.circular(24),
+                      border:
+                          Border.all(color: border),
+                    ),
+                    child: Column(
+                      children: [
+
+                        _infoRow(
+                          icon:
+                              Icons.phone_outlined,
+                          title: 'Телефон',
+                          value: profile.phone,
+                          onTap:
+                              profile.phone.trim().isEmpty
+                                  ? null
+                                  : () => _call(
+                                        profile.phone,
+                                      ),
+                        ),
+
+                        _divider(),
+
+                        _infoRow(
+                          icon:
+                              Icons.location_on_outlined,
+                          title: 'Адрес',
+                          value: profile.address,
+                          onTap: profile.address
+                                      .trim()
+                                      .isEmpty &&
+                                  profile.coordinates
+                                      .trim()
+                                      .isEmpty
+                              ? null
+                              : () => _openMap(
+                                    coordinates:
+                                        profile
+                                            .coordinates,
+                                    address:
+                                        profile.address,
+                                  ),
+                        ),
+
+                        _divider(),
+
+                        _infoRow(
+                          icon:
+                              Icons.schedule_outlined,
+                          title: 'Часы работы',
+                          value:
+                              profile.workingHours,
+                        ),
+
+                        if (profile.coordinates
+                            .trim()
+                            .isNotEmpty) ...[
+                          _divider(),
+
+                          _infoRow(
+                            icon: Icons
+                                .my_location_outlined,
+                            title: 'Координаты',
+                            value:
+                                profile.coordinates,
+                            onTap: () => _openMap(
+                              coordinates:
+                                  profile.coordinates,
+                              address:
+                                  profile.address,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ==================================================
+                  // ACTIONS
+                  // ==================================================
+
+                  Row(
+                    children: [
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              profile.phone
+                                      .trim()
+                                      .isEmpty
+                                  ? null
+                                  : () => _call(
+                                        profile.phone,
+                                      ),
+                          icon: const Icon(
+                            Icons.phone_rounded,
+                          ),
+                          label: const Text(
+                            'Позвонить',
+                          ),
+                          style:
+                              ElevatedButton.styleFrom(
+                            backgroundColor: orange,
+                            foregroundColor:
+                                Colors.white,
+                            elevation: 0,
+                            minimumSize:
+                                const Size(
+                              double.infinity,
+                              52,
+                            ),
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              profile.coordinates
+                                          .trim()
+                                          .isEmpty &&
+                                      profile.address
+                                          .trim()
+                                          .isEmpty
+                                  ? null
+                                  : () => _openMap(
+                                        coordinates:
+                                            profile
+                                                .coordinates,
+                                        address:
+                                            profile
+                                                .address,
+                                      ),
+                          icon: const Icon(
+                            Icons.map_outlined,
+                          ),
+                          label: const Text(
+                            'На карте',
+                          ),
+                          style:
+                              OutlinedButton.styleFrom(
+                            foregroundColor: orange,
+                            side:
+                                const BorderSide(
+                              color: orange,
+                            ),
+                            minimumSize:
+                                const Size(
+                              double.infinity,
+                              52,
+                            ),
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  const Center(
+                    child: Text(
+                      'AG Service',
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return const Divider(
+      height: 1,
+      indent: 64,
+      color: border,
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required String title,
+    required String value,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
+        ),
+        child: Row(
+          children: [
+
+            Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: orange,
+                size: 22,
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: muted,
+                      fontSize: 11,
+                    ),
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  Text(
+                    value.trim().isEmpty
+                        ? 'Не указано'
+                        : value,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight:
+                          FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            if (onTap != null)
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: muted,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

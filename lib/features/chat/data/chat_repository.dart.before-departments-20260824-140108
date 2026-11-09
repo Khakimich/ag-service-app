@@ -1,0 +1,63 @@
+import '../../../core/api_client.dart';
+import '../../../models/chat_conversation.dart';
+import '../../../models/chat_message.dart';
+
+class ChatRepository {
+  ChatRepository(this._api);
+  final ApiClient _api;
+
+  Future<List<ChatConversation>> listConversations() async {
+    final data = await _api.get('/api/conversations') as Map<String, dynamic>;
+    final raw = data['conversations'] as List<dynamic>;
+    return raw
+        .map((e) => ChatConversation.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// Creates or returns the existing conversation thread for this (user, specialist) pair.
+  Future<ChatConversation> getOrCreateConversation(String specialistId) async {
+    final data = await _api.post('/api/conversations', {
+      'specialist_id': specialistId,
+    }) as Map<String, dynamic>;
+    return ChatConversation.fromJson(data['conversation'] as Map<String, dynamic>);
+  }
+
+  /// Fetches messages for [conversationId].
+  /// Pass [after] (UTC ISO string) to retrieve only messages newer than that timestamp.
+  Future<List<ChatMessage>> fetchMessages(
+    String conversationId, {
+    String? after,
+  }) async {
+    final query = <String, dynamic>{};
+    if (after != null) query['after'] = after;
+
+    final data = await _api.get(
+      '/api/conversations/$conversationId/messages',
+      query: query.isEmpty ? null : query,
+    ) as Map<String, dynamic>;
+
+    final raw = data['messages'] as List<dynamic>;
+    return raw
+        .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<ChatMessage> sendMessage(
+    String conversationId, {
+    String? body,
+    String? photoBase64,
+    String? fileBase64,
+    String? fileName,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (body != null && body.isNotEmpty) payload['body'] = body;
+    if (photoBase64 != null) payload['photo_base64'] = photoBase64;
+    if (fileBase64 != null) payload['file_base64'] = fileBase64;
+    if (fileName != null) payload['file_name'] = fileName;
+    final data = await _api.post(
+      '/api/conversations/$conversationId/messages',
+      payload,
+    ) as Map<String, dynamic>;
+    return ChatMessage.fromJson(data['message'] as Map<String, dynamic>);
+  }
+}

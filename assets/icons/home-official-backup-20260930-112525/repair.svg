@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="orange" x1="17" y1="13" x2="48" y2="53">
+    <stop stop-color="#FFA052"/>
+    <stop offset=".5" stop-color="#FF6508"/>
+    <stop offset="1" stop-color="#D73C00"/>
+  </linearGradient>
+  <linearGradient id="steel" x1="16" y1="14" x2="48" y2="50">
+    <stop stop-color="#737982"/>
+    <stop offset=".45" stop-color="#34373D"/>
+    <stop offset="1" stop-color="#15171A"/>
+  </linearGradient>
+  <filter id="s" x="7" y="6" width="51" height="54">
+    <feDropShadow dx="0" dy="5" stdDeviation="4" flood-opacity=".24"/>
+  </filter>
+</defs>
+<g filter="url(#s)">
+  <path d="M39 14C44 12 49 14 52 17L44 25L39 20L47 12C49 18 47 24 43 28C39 32 34 33 29 31L17 44C14 47 10 47 8 44C6 41 7 38 9 36L22 23C20 18 21 13 25 10" fill="url(#steel)"/>
+  <path d="M12 37L20 45L17 49C14 52 9 52 6 49C3 46 3 42 6 39L12 37Z" fill="url(#orange)"/>
+  <path d="M27 15C24 18 24 23 27 26" stroke="white" stroke-opacity=".3" stroke-width="3" stroke-linecap="round"/>
+</g>
+</svg>

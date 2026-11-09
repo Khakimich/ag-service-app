@@ -1,0 +1,1044 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/theme.dart';
+import '../../../models/service.dart';
+import '../data/booking_repository.dart';
+
+class ServicesListScreen extends StatefulWidget {
+  const ServicesListScreen({super.key, this.initialSearch});
+
+  final String? initialSearch;
+
+  @override
+  State<ServicesListScreen> createState() => _ServicesListScreenState();
+}
+
+class _ServicesListScreenState extends State<ServicesListScreen> {
+  late Future<List<Service>> _future;
+  late final TextEditingController _searchCtrl;
+
+  String _query = '';
+  String _selectedCategory = 'Все';
+
+  @override
+  void initState() {
+    super.initState();
+
+    _query = (widget.initialSearch ?? '').trim().toLowerCase();
+    _searchCtrl = TextEditingController(text: widget.initialSearch ?? '');
+    _searchCtrl.addListener(_onSearch);
+
+    _future = context.read<BookingRepository>().listServices();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.removeListener(_onSearch);
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearch() {
+    if (!mounted) return;
+
+    setState(() {
+      _query = _searchCtrl.text.trim().toLowerCase();
+    });
+  }
+
+  void _retry() {
+    setState(() {
+      _future = context.read<BookingRepository>().listServices();
+    });
+  }
+
+  List<String> _categories(List<Service> services) {
+    final values = <String>[];
+
+    for (final service in services) {
+      final category = service.category.trim();
+
+      if (category.isEmpty || category == 'Без категории') {
+        continue;
+      }
+
+      if (!values.contains(category)) {
+        values.add(category);
+      }
+    }
+
+    values.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return ['Все', ...values];
+  }
+
+  List<Service> _filtered(List<Service> services) {
+    return services
+        .where((service) {
+          final categoryMatches =
+              _selectedCategory == 'Все' ||
+              service.category == _selectedCategory;
+
+          if (!categoryMatches) return false;
+
+          if (_query.isEmpty) return true;
+
+          final searchable =
+              [
+                service.title,
+                service.description ?? '',
+                service.category,
+              ].join(' ').toLowerCase();
+
+          return searchable.contains(_query);
+        })
+        .toList(growable: false);
+  }
+
+  String _iconForCategory(String category) {
+    final value = category.toLowerCase();
+
+    if (category == 'Все') {
+      return 'assets/icons/services/categories/all.png';
+    }
+
+    if (value.contains('двигател') || value.contains('мотор')) {
+      return 'assets/icons/services/categories/engine.png';
+    }
+
+    if (value.contains('акпп') ||
+        value.contains('кпп') ||
+        value.contains('трансмис') ||
+        value.contains('короб')) {
+      return 'assets/icons/services/categories/transmission.png';
+    }
+
+    if (value.contains('тормоз')) {
+      return 'assets/icons/services/categories/brake.png';
+    }
+
+    if (value.contains('рулев')) {
+      return 'assets/icons/services/categories/steering.png';
+    }
+
+    if (value.contains('диагност')) {
+      return 'assets/icons/services/categories/diagnostic.png';
+    }
+
+    if (value.contains('электр')) {
+      return 'assets/icons/services/categories/electric.png';
+    }
+
+    if (value.contains('кондиц') ||
+        value.contains('климат') ||
+        value.contains('вакуум')) {
+      return 'assets/icons/services/categories/ac.png';
+    }
+
+    if (value.contains('ходов') || value.contains('подвес')) {
+      return 'assets/icons/services/categories/suspension.png';
+    }
+
+    return 'assets/icons/services/categories/maintenance.png';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF0B1014) : const Color(0xFFF5F6F8),
+      body: SafeArea(
+        child: FutureBuilder<List<Service>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const _LoadingState();
+            }
+            if (snapshot.hasError) {
+              return _ErrorState(
+                message: snapshot.error.toString(),
+                onRetry: _retry,
+              );
+            }
+
+            final services = snapshot.data ?? const <Service>[];
+            final categories = _categories(services);
+            if (!categories.contains(_selectedCategory))
+              _selectedCategory = 'Все';
+            final filtered = _filtered(services);
+
+            return RefreshIndicator(
+              color: BrandColors.orange,
+              onRefresh: () async {
+                final future = context.read<BookingRepository>().listServices();
+                setState(() => _future = future);
+                await future;
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _HeroHeader(
+                      totalCount: services.length,
+                      controller: _searchCtrl,
+                      onClear: _searchCtrl.clear,
+                      onBack: () {
+                        if (Navigator.of(context).canPop())
+                          Navigator.of(context).pop();
+                      },
+                    ),
+                  ),
+                  if (services.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _CategoryGrid(
+                        categories: categories,
+                        selectedCategory: _selectedCategory,
+                        iconForCategory: _iconForCategory,
+                        countForCategory:
+                            (category) =>
+                                category == 'Все'
+                                    ? services.length
+                                    : services
+                                        .where((s) => s.category == category)
+                                        .length,
+                        onSelected:
+                            (category) =>
+                                setState(() => _selectedCategory = category),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: _PromoBanner()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 22, 18, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedCategory == 'Все'
+                                  ? 'Все услуги'
+                                  : _selectedCategory,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -.5,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: BrandColors.orange.withValues(alpha: .11),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${filtered.length}',
+                              style: const TextStyle(
+                                color: BrandColors.orange,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (services.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyState(
+                        title: 'Услуги пока не добавлены',
+                        subtitle:
+                            'Когда услуги появятся, они будут доступны здесь.',
+                      ),
+                    )
+                  else if (filtered.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyState(
+                        title: 'Ничего не найдено',
+                        subtitle:
+                            'Попробуйте другую категорию или измените запрос.',
+                        actionText: 'Сбросить фильтры',
+                        onAction: () {
+                          _searchCtrl.clear();
+                          setState(() => _selectedCategory = 'Все');
+                        },
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 110),
+                      sliver: SliverList.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, index) {
+                          final service = filtered[index];
+                          return _PremiumServiceCard(
+                            service: service,
+                            iconAsset: _iconForCategory(service.category),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroHeader extends StatelessWidget {
+  const _HeroHeader({
+    required this.totalCount,
+    required this.controller,
+    required this.onClear,
+    required this.onBack,
+  });
+  final int totalCount;
+  final TextEditingController controller;
+  final VoidCallback onClear;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors:
+              isDark
+                  ? const [Color(0xFF0B1014), Color(0xFF121A20)]
+                  : const [Color(0xFFFFFFFF), Color(0xFFF1F3F5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Material(
+                color: colors.surfaceContainerHighest.withValues(alpha: .72),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: onBack,
+                  borderRadius: BorderRadius.circular(16),
+                  child: const SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Услуги',
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.8,
+                      ),
+                    ),
+                    Text(
+                      'Автосервис',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: BrandColors.orange.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: BrandColors.orange,
+                  size: 25,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 17),
+          Container(
+            height: 58,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A2026) : Colors.white,
+              borderRadius: BorderRadius.circular(19),
+              border: Border.all(
+                color: colors.outlineVariant.withValues(alpha: .35),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? .15 : .05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Поиск услуги...',
+                hintStyle: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 15,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: BrandColors.orange,
+                  size: 23,
+                ),
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller,
+                  builder:
+                      (_, value, __) =>
+                          value.text.isEmpty
+                              ? const SizedBox.shrink()
+                              : IconButton(
+                                onPressed: onClear,
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 18),
+              ),
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            '$totalCount услуг доступно',
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryGrid extends StatelessWidget {
+  const _CategoryGrid({
+    required this.categories,
+    required this.selectedCategory,
+    required this.iconForCategory,
+    required this.countForCategory,
+    required this.onSelected,
+  });
+  final List<String> categories;
+  final String selectedCategory;
+  final String Function(String) iconForCategory;
+  final int Function(String) countForCategory;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final columns = c.maxWidth >= 700 ? 5 : 4;
+          const gap = 8.0;
+          final w = (c.maxWidth - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final category in categories)
+                SizedBox(
+                  width: w,
+                  height: 126,
+                  child: _CategoryTile(
+                    title: category,
+                    count: countForCategory(category),
+                    iconAsset: iconForCategory(category),
+                    selected: category == selectedCategory,
+                    onTap: () => onSelected(category),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.title,
+    required this.count,
+    required this.iconAsset,
+    required this.selected,
+    required this.onTap,
+  });
+  final String title;
+  final int count;
+  final String iconAsset;
+  final bool selected;
+  final VoidCallback onTap;
+
+  String get shortTitle {
+    switch (title) {
+      case 'Рулевое управление':
+        return 'Рулевое\nуправление';
+      case 'Техническое обслуживание':
+        return 'Тех.\nобслуживание';
+      case 'Тормозная система':
+        return 'Тормозная\nсистема';
+      default:
+        return title;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(21),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color:
+                selected
+                    ? BrandColors.orange
+                    : (isDark ? const Color(0xFF151B20) : Colors.white),
+            borderRadius: BorderRadius.circular(21),
+            border: Border.all(
+              color:
+                  selected
+                      ? BrandColors.orange
+                      : colors.outlineVariant.withValues(alpha: .35),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    selected
+                        ? BrandColors.orange.withValues(alpha: .24)
+                        : Colors.black.withValues(alpha: isDark ? .10 : .045),
+                blurRadius: selected ? 20 : 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(5, 7, 5, 7),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child:
+                      title == 'Все'
+                          ? SvgPicture.asset(
+                            'assets/icons/services/car.svg',
+                            fit: BoxFit.contain,
+                            colorFilter: ColorFilter.mode(
+                              selected ? Colors.white : BrandColors.orange,
+                              BlendMode.srcIn,
+                            ),
+                          )
+                          : Image.asset(
+                            iconAsset,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            errorBuilder:
+                                (_, __, ___) => Icon(
+                                  Icons.car_repair_rounded,
+                                  color:
+                                      selected
+                                          ? Colors.white
+                                          : BrandColors.orange,
+                                  size: 36,
+                                ),
+                          ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  shortTitle,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? Colors.white : colors.onSurface,
+                    fontSize: 10.2,
+                    height: 1.05,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    color:
+                        selected
+                            ? Colors.white.withValues(alpha: .78)
+                            : colors.onSurfaceVariant,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PromoBanner extends StatelessWidget {
+  const _PromoBanner();
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
+      child: Container(
+        height: 145,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            colors:
+                isDark
+                    ? const [Color(0xFF121212), Color(0xFF321308)]
+                    : const [Color(0xFF1C1C1C), Color(0xFF52200A)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: BrandColors.orange.withValues(alpha: .13),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -18,
+              bottom: -26,
+              child: Icon(
+                Icons.directions_car_filled_rounded,
+                size: 175,
+                color: BrandColors.orange.withValues(alpha: .22),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'ПРОФЕССИОНАЛЬНЫЙ',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -.4,
+                    ),
+                  ),
+                  const Text(
+                    'АВТОСЕРВИС',
+                    style: TextStyle(
+                      color: BrandColors.orange,
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -.6,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 14,
+                    runSpacing: 5,
+                    children: const [
+                      _PromoPoint('Качественно'),
+                      _PromoPoint('Быстро'),
+                      _PromoPoint('С гарантией'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PromoPoint extends StatelessWidget {
+  const _PromoPoint(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Icon(
+        Icons.check_circle_rounded,
+        color: BrandColors.orange,
+        size: 17,
+      ),
+      const SizedBox(width: 5),
+      Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ],
+  );
+}
+
+class _PremiumServiceCard extends StatelessWidget {
+  const _PremiumServiceCard({required this.service, required this.iconAsset});
+  final Service service;
+  final String iconAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push('/services/${service.id}'),
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          height: 142,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF151B20) : Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: .34),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? .14 : .055),
+                blurRadius: 18,
+                offset: const Offset(0, 7),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 126,
+                height: double.infinity,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(21),
+                    bottomLeft: Radius.circular(21),
+                  ),
+                  child: _ServiceImage(
+                    photoUrl: service.photoUrl,
+                    iconAsset: iconAsset,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 13, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          height: 1.18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        service.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: BrandColors.orange,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 15,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              service.durationLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              service.priceLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: BrandColors.orange,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: const BoxDecoration(
+                              color: BrandColors.orange,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceImage extends StatelessWidget {
+  const _ServiceImage({required this.photoUrl, required this.iconAsset});
+  final String? photoUrl;
+  final String iconAsset;
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = photoUrl != null && photoUrl!.trim().isNotEmpty;
+    if (hasPhoto) {
+      return CachedNetworkImage(
+        imageUrl: photoUrl!,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => _CategoryImagePlaceholder(iconAsset: iconAsset),
+        errorWidget:
+            (_, __, ___) => _CategoryImagePlaceholder(iconAsset: iconAsset),
+      );
+    }
+    return _CategoryImagePlaceholder(iconAsset: iconAsset);
+  }
+}
+
+class _CategoryImagePlaceholder extends StatelessWidget {
+  const _CategoryImagePlaceholder({required this.iconAsset});
+  final String iconAsset;
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          BrandColors.orange.withValues(alpha: .14),
+          BrandColors.orange.withValues(alpha: .035),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Image.asset(
+          iconAsset,
+          fit: BoxFit.contain,
+          errorBuilder:
+              (_, __, ___) => const Icon(
+                Icons.car_repair_rounded,
+                color: BrandColors.orange,
+                size: 42,
+              ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: CircularProgressIndicator(color: BrandColors.orange));
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.actionText,
+    this.onAction,
+  });
+  final String title;
+  final String subtitle;
+  final String? actionText;
+  final VoidCallback? onAction;
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 78,
+              height: 78,
+              decoration: BoxDecoration(
+                color: BrandColors.orange.withValues(alpha: .10),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.car_repair_rounded,
+                color: BrandColors.orange,
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 17),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                height: 1.4,
+                fontSize: 13,
+              ),
+            ),
+            if (actionText != null && onAction != null) ...[
+              const SizedBox(height: 17),
+              OutlinedButton(
+                onPressed: onAction,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BrandColors.orange,
+                ),
+                child: Text(actionText!),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 50,
+            color: BrandColors.orange,
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Не удалось загрузить услуги',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: BrandColors.orange,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Повторить'),
+          ),
+        ],
+      ),
+    ),
+  );
+}

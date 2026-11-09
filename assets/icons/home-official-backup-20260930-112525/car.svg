@@ -1,0 +1,28 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="car" x1="13" y1="20" x2="49" y2="48" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FF9D4D"/>
+    <stop offset=".5" stop-color="#FF6508"/>
+    <stop offset="1" stop-color="#D93D00"/>
+  </linearGradient>
+  <linearGradient id="glass" x1="25" y1="21" x2="39" y2="34">
+    <stop stop-color="#D9F2FF"/>
+    <stop offset="1" stop-color="#61717D"/>
+  </linearGradient>
+  <filter id="s" x="5" y="13" width="55" height="43">
+    <feDropShadow dx="0" dy="5" stdDeviation="4" flood-opacity=".25"/>
+  </filter>
+</defs>
+<g filter="url(#s)">
+  <path d="M15 37L19 25C20 22 23 20 27 20H38C42 20 45 22 46 25L50 37" fill="url(#car)"/>
+  <path d="M22 26C23 23 25 22 28 22H37C40 22 42 23 43 26L45 32H20L22 26Z" fill="url(#glass)"/>
+  <rect x="11" y="32" width="43" height="15" rx="7" fill="url(#car)"/>
+  <path d="M16 35C23 32 42 32 49 35" stroke="white" stroke-opacity=".35" stroke-width="2.5" stroke-linecap="round"/>
+  <rect x="17" y="38" width="7" height="4" rx="2" fill="#FFF3D9"/>
+  <rect x="41" y="38" width="7" height="4" rx="2" fill="#FFF3D9"/>
+  <circle cx="20" cy="47" r="5" fill="#202226"/>
+  <circle cx="20" cy="47" r="2" fill="#92959B"/>
+  <circle cx="45" cy="47" r="5" fill="#202226"/>
+  <circle cx="45" cy="47" r="2" fill="#92959B"/>
+</g>
+</svg>
