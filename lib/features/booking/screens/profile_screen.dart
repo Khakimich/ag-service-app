@@ -16,6 +16,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../providers/my_bookings_provider.dart';
 import '../providers/notifications_provider.dart';
 import '../../../core/i18n.dart'; // AG_I18N1
+import '../../bonus/my_qr_sheet.dart'; // AG_BONUSQR1
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -1163,6 +1164,20 @@ class _AgProfileHero extends StatelessWidget {
                 _quick(context, '<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3zM7 19v2M17 19v2"/>', tr('Гараж'), tr('Мои авто'),
                     () => context.push('/profile/my-cars')),
               ]),
+            ),
+            const SizedBox(height: 10), // AG_BONUSQR1
+            GestureDetector(
+              onTap: () => showMyBonusQr(context),
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const AgIcon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
+                      size: 20, color: Color(0xFFF26200), strokeWidth: 2.2),
+                  const SizedBox(width: 8),
+                  Text(tr('Оплатить бонусами · Мой QR'), style: const TextStyle(color: Color(0xFFF26200), fontSize: 15, fontWeight: FontWeight.w900)),
+                ]),
+              ),
             ),
           ]),
         ),
