@@ -7,10 +7,12 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../core/ag_icon3d.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../auth/providers/auth_provider.dart';
+
+const _taxiSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF6A00"><path d="M9.5 2h5a1 1 0 0 1 1 1v1.5h-7V3a1 1 0 0 1 1-1z"/><path d="M7.3 6h9.4a2 2 0 0 1 1.85 1.24L20 11a2 2 0 0 1 1 1.73V18a1 1 0 0 1-1 1h-1v1.5a1.5 1.5 0 0 1-3 0V19H8v1.5a1.5 1.5 0 0 1-3 0V19H4a1 1 0 0 1-1-1v-5.27A2 2 0 0 1 4 11l1.45-3.76A2 2 0 0 1 7.3 6zm.2 2-1.15 3h11.3l-1.15-3zM6.5 13.25a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zm11 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zM10 14v1.5h4V14z"/></svg>';
 
 const _parkApi = 'https://job.autogrom.ru/ag_park_api.php';
 
@@ -208,7 +210,7 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
               height: 54,
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
               alignment: Alignment.center,
-              child: const AgIcon3D('taxi', size: 40),
+              child: SvgPicture.string(_taxiSvg, width: 32, height: 32),
             ),
             const SizedBox(width: 14),
             Expanded(

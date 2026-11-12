@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/ag_icon3d.dart';
 import '../../../core/theme.dart';
 import '../../../models/user_car.dart';
 import '../providers/my_cars_provider.dart';
@@ -192,7 +191,7 @@ class _CarFormScreenState extends State<CarFormScreen> {
                         width: 76, height: 76, alignment: Alignment.center,
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24),
                             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 18, offset: const Offset(0, 8))]),
-                        child: const AgIcon3D('car', size: 56),
+                        child: _svg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF6A00"><path d="M7.3 6h9.4a2 2 0 0 1 1.85 1.24L20 11a2 2 0 0 1 1 1.73V18a1 1 0 0 1-1 1h-1v1.5a1.5 1.5 0 0 1-3 0V19H8v1.5a1.5 1.5 0 0 1-3 0V19H4a1 1 0 0 1-1-1v-5.27A2 2 0 0 1 4 11l1.45-3.76A2 2 0 0 1 7.3 6zm.2 2-1.15 3h11.3l-1.15-3zM6.5 13.25a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zm11 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5z"/></svg>', 44),
                       ),
                     ]),
                   ]),

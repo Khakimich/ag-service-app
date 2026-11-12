@@ -12,7 +12,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/ag_icon3d.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../auth/providers/auth_provider.dart';
@@ -25,6 +24,21 @@ const _dept = 'autogrom_service';
 // ───────────────────────── Иконки (SVG) ─────────────────────────
 // Все иконки внутри экранов — SVG (без шрифтовых Material-иконок), чтобы везде отображались одинаково.
 class _Ico {
+  // AG_SVCHUB4: строгие залитые силуэты (белые на оранжевой плашке)
+  static const _taxi =
+      '<path d="M9.5 2h5a1 1 0 0 1 1 1v1.5h-7V3a1 1 0 0 1 1-1z"/>'
+      '<path d="M7.3 6h9.4a2 2 0 0 1 1.85 1.24L20 11a2 2 0 0 1 1 1.73V18a1 1 0 0 1-1 1h-1v1.5a1.5 1.5 0 0 1-3 0V19H8v1.5a1.5 1.5 0 0 1-3 0V19H4a1 1 0 0 1-1-1v-5.27A2 2 0 0 1 4 11l1.45-3.76A2 2 0 0 1 7.3 6zm.2 2-1.15 3h11.3l-1.15-3zM6.5 13.25a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zm11 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zM10 14v1.5h4V14z"/>';
+  static const _tow =
+      '<path d="M2 8a1 1 0 0 1 1-1h5.6a1 1 0 0 1 .86.49L11.6 11H13V9.4l7.3-3.65a1 1 0 0 1 .9 1.79L15 10.64V11h6a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-.8a3 3 0 0 0-5.4 0H9.2a3 3 0 0 0-5.4 0H3a1 1 0 0 1-1-1zm2 1v3h5.3L7.9 9z"/>'
+      '<circle cx="6.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/>';
+  static const _body =
+      '<path d="M15 1.5h1.3l.6-1h2.2l.6 1H21a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1zm3 1.4a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 0 0 0-2.7z"/>'
+      '<path fill-rule="evenodd" transform="translate(0 2)" d="M2 15.5v-1.8a2 2 0 0 1 1.2-1.8L5.3 11l2.2-3.1A2 2 0 0 1 9.1 7h4.6a2 2 0 0 1 1.5.7L18 11l2 .4a2 2 0 0 1 1.7 2V16a1 1 0 0 1-1 1h-.9a2.6 2.6 0 0 0-5.1 0H9.4a2.6 2.6 0 0 0-5.1 0H3a1 1 0 0 1-1-1zM8.7 8.7 7.1 11h3.7V8.7zm3.8 0V11h3.7l-1.8-2.3z"/>'
+      '<circle cx="6.85" cy="19.2" r="1.9"/><circle cx="17.25" cy="19.2" r="1.9"/>';
+  static const _osago =
+      '<path d="M12 1.8 20 5v6.2c0 5-3.4 9.5-8 10.9-4.6-1.4-8-5.9-8-10.9V5zm3.9 7.3-5.1 5.2-2.4-2.4-1.4 1.4 3.8 3.8 6.5-6.6z"/>';
+  static String glyph(String key, [String color = '#FFFFFF']) =>
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="$color">${switch (key) { 'taxi' => _taxi, 'tow' => _tow, 'bodycam' => _body, _ => _osago }}</svg>';
   static String _l(String c, String p, [double w = 2]) =>
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="$c" stroke-width="$w" stroke-linecap="round" stroke-linejoin="round">$p</svg>';
   static String pin([String c = '#FF6A00']) => _l(c, '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
@@ -110,18 +124,19 @@ class _HubTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
-            boxShadow: [BoxShadow(color: item.color.withValues(alpha: dark ? 0 : .08), blurRadius: 14, offset: const Offset(0, 6))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: dark ? 0 : .04), blurRadius: 14, offset: const Offset(0, 6))],
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 50,
+              height: 50,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [item.color.withValues(alpha: .16), item.color.withValues(alpha: .04)]),
+                borderRadius: BorderRadius.circular(16),
+                color: item.soon ? const Color(0xFFFFB27A) : _orange,
+                boxShadow: [BoxShadow(color: _orange.withValues(alpha: .28), blurRadius: 10, offset: const Offset(0, 4))],
               ),
-              child: AgIcon3D(item.icon, size: 42),
+              child: _svg(_Ico.glyph(item.icon), 28),
             ),
             const SizedBox(height: 8),
             Text(item.title,
@@ -133,13 +148,13 @@ class _HubTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
               decoration: BoxDecoration(
-                color: item.soon ? cs.surfaceContainerHighest : item.color.withValues(alpha: .12),
+                color: item.soon ? cs.surfaceContainerHighest : _orange.withValues(alpha: .1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(item.caption,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.color)),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : _orange)),
             ),
           ]),
         ),
@@ -229,7 +244,7 @@ class _SvcScaffold extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24),
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 18, offset: const Offset(0, 8))]),
-                      child: AgIcon3D(icon3d, size: 54),
+                      child: _svg(_Ico.glyph(icon3d, '#FF6A00'), 42),
                     ),
                   ]),
                   if (chips.isNotEmpty) ...[
