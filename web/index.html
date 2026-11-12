@@ -63,5 +63,43 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- AG_IOS_INSTALL: подсказка "Установить на iPhone" (добавить на экран Домой) -->
+  <script>
+  (function () {
+    try {
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+      if (!isIOS || standalone) return;
+      var KEY = 'ag_ios_install_hidden_until';
+      try { if (Date.now() < +(localStorage.getItem(KEY) || 0)) return; } catch (e) {}
+      var inApp = /Instagram|FBAN|FBAV|Telegram|VKClient|WhatsApp|YaBrowser\/.*Mobile.*WebView/.test(ua);
+      var html =
+        '<div style="font-weight:700;font-size:17px;margin-bottom:8px">Установите AG Service на iPhone</div>' +
+        (inApp
+          ? '<div>Откройте эту страницу в <b>Safari</b>: нажмите «⋯» → «Открыть в Safari», затем следуйте подсказке.</div>'
+          : '<div style="line-height:1.6">1. Нажмите <b>«Поделиться»</b> ' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2" style="vertical-align:-3px"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></svg>' +
+            ' внизу экрана<br>2. Выберите <b>«На экран „Домой“»</b><br>3. Нажмите <b>«Добавить»</b></div>' +
+            '<div style="margin-top:6px;color:#9CA3AF;font-size:13px">Приложение появится на экране как обычное, с уведомлениями и входом.</div>') +
+        '<button id="ag-ios-close" style="margin-top:12px;width:100%;padding:12px;border:0;border-radius:12px;background:#2A2A2E;color:#fff;font:600 15px -apple-system,sans-serif">Понятно</button>';
+      function show() {
+        var d = document.createElement('div');
+        d.id = 'ag-ios-install';
+        d.setAttribute('style', 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:99999;' +
+          'background:#1C1C1F;color:#fff;border-radius:18px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.5);' +
+          'font:15px -apple-system,Segoe UI,Roboto,sans-serif');
+        d.innerHTML = html;
+        document.body.appendChild(d);
+        document.getElementById('ag-ios-close').onclick = function () {
+          try { localStorage.setItem(KEY, String(Date.now() + 3 * 24 * 3600 * 1000)); } catch (e) {}
+          d.remove();
+        };
+      }
+      setTimeout(show, 2500);
+    } catch (e) {}
+  })();
+  </script>
 </body>
 </html>

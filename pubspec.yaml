@@ -66,31 +66,22 @@ flutter:
     - assets/icons/nav/
     - assets/icons/bonus_levels/
     - assets/logo.png
-    - assets/icons/
     - assets/icons/auth/
-    - assets/icons/
     - assets/icons/services/
-    - assets/icons/
     - assets/icons/services/categories/
-    - assets/icons/
-    - assets/icons/auth/
-    - assets/icons/
     - assets/icons/profile/
-    - assets/icons/
-    - assets/icons/auth/
-    - assets/icons/
     - assets/icons/home/
     - assets/home_v3/
     - assets/car_logos/
-    - assets/icons/
-    - assets/icons/auth/
-    - assets/icons/
     - assets/icons/chat/
-    - assets/icons/
-    - assets/icons/auth/
-    - assets/icons/
     - assets/icons/car_form/
     - assets/icons/share/ # AG_INVITE2: whatsapp.svg, telegram.svg, max.svg
+
+  # AG_WEBFAST2: свой шрифт, чтобы веб-версия не качала Roboto с fonts.gstatic.com
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto.ttf
 
 
 
