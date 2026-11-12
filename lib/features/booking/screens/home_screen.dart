@@ -2058,13 +2058,17 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(
-          tr('Новости и акции'),
-          action: 'Все',
+        // AG_PROMO2: «Акции» — квадратные карточки, стрелка открывает все акции и новости
+        InkWell(
+          borderRadius: BorderRadius.circular(10),
           onTap: () => context.push('/news'),
+          child: Row(children: [
+            Expanded(child: Text(tr('Акции'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4))),
+            const Icon(Icons.chevron_right_rounded, size: 28),
+          ]),
         ),
-        const SizedBox(height: 10),
-        AgNewsStrip(fallback: SizedBox( // AG_FIX1: настоящие новости и акции из AG Service
+        const SizedBox(height: 12),
+        AgPromoSquares(fallback: SizedBox( // AG_FIX1: настоящие новости и акции из AG Service
           height: 126,
           child: ListView(
             scrollDirection: Axis.horizontal,

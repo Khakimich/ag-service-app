@@ -169,3 +169,155 @@ class _NewsCardState extends State<_NewsCard> {
     );
   }
 }
+
+// ───────────── AG_PROMO2: «Акции» — квадратные карточки в ряд (оранжевые/синие) ─────────────
+// Заголовок сверху слева крупным белым шрифтом, картинка акции — в правом нижнем углу.
+class AgPromoSquares extends StatefulWidget {
+  const AgPromoSquares({super.key, required this.fallback});
+  final Widget fallback;
+
+  @override
+  State<AgPromoSquares> createState() => _AgPromoSquaresState();
+}
+
+class _AgPromoSquaresState extends State<AgPromoSquares> {
+  List<AgNewsItem>? _items;
+  bool _failed = false;
+
+  static const _bgs = <List<Color>>[
+    [Color(0xFFFF7A1A), Color(0xFFF05A00)],
+    [Color(0xFF3B7BFF), Color(0xFF1F54D6)],
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final list = await NewsRepository(context.read<ApiClient>()).fetchNews();
+      if (!mounted) return;
+      // сначала акции, потом новости
+      final promos = [...list.where((e) => e.isPromotion), ...list.where((e) => !e.isPromotion)];
+      setState(() => _items = promos.take(10).toList());
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _items;
+    if (_failed || (items != null && items.isEmpty)) return widget.fallback;
+    const size = 150.0;
+    return SizedBox(
+      height: size,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items?.length ?? 3,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final bg = _bgs[i % _bgs.length];
+          if (items == null) {
+            return Container(
+              width: size,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), color: bg[0].withValues(alpha: .25)),
+            );
+          }
+          final item = items[i];
+          return _PromoSquare(
+            item: item,
+            colors: bg,
+            size: size,
+            onTap: () => context.push('/news/${item.id}', extra: item),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PromoSquare extends StatefulWidget {
+  const _PromoSquare({required this.item, required this.colors, required this.size, required this.onTap});
+  final AgNewsItem item;
+  final List<Color> colors;
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  State<_PromoSquare> createState() => _PromoSquareState();
+}
+
+class _PromoSquareState extends State<_PromoSquare> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapCancel: () => setState(() => _down = false),
+      onTapUp: (_) => setState(() => _down = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _down ? .96 : 1,
+        duration: const Duration(milliseconds: 140),
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: widget.colors),
+            boxShadow: [BoxShadow(color: widget.colors[1].withValues(alpha: .28), blurRadius: 14, offset: const Offset(0, 6))],
+          ),
+          child: Stack(children: [
+            // декоративный круг
+            Positioned(
+              right: -30,
+              bottom: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .12)),
+              ),
+            ),
+            if (item.imageUrl != null)
+              Positioned(
+                right: -8,
+                bottom: -6,
+                width: widget.size * .72,
+                height: widget.size * .56,
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  imageBuilder: (_, img) => Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(18)),
+                      image: DecorationImage(image: img, fit: BoxFit.cover),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            Positioned(
+              left: 14,
+              right: 12,
+              top: 12,
+              child: Text(
+                item.title,
+                maxLines: item.imageUrl != null ? 3 : 5,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 15.5, height: 1.15, fontWeight: FontWeight.w900, letterSpacing: -.2),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}

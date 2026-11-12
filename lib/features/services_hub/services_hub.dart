@@ -63,28 +63,34 @@ class _Ico {
 Widget _svg(String s, double size) => SvgPicture.string(s, width: size, height: size);
 
 // ───────────────────────── Раздел на главной ─────────────────────────
-// AG_SVCHUB3: четыре плитки в один ряд — 3D-иконка сверху, короткая подпись снизу.
+// AG_SVCHUB5: горизонтальные карточки — сверху цветная иллюстрация, снизу заголовок и описание.
 class ServicesHubSection extends StatelessWidget {
   const ServicesHubSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final items = <_HubItem>[
-      _HubItem('taxi', tr('Работа в такси'), tr('0% комиссии'), const Color(0xFFF5A300), () => context.push('/park')),
-      _HubItem('tow', tr('Эвакуатор'), tr('от 4000 ₽'), const Color(0xFFFF6A00), () => context.push('/evacuator')),
-      _HubItem('bodycam', tr('Кузовной ремонт'), tr('По фото'), const Color(0xFF2057DF), () => context.push('/body-repair')),
-      _HubItem('shield', tr('ОСАГО для такси'), tr('Скоро'), const Color(0xFF059669), () => _soon(context), soon: true),
+      _HubItem('taxi', tr('Работа в такси'), tr('Яндекс Такси в парке «Азия Про» с комиссией 0%'),
+          const [Color(0xFFFFB53D), Color(0xFFFF7A00)], '0%', () => context.push('/park')),
+      _HubItem('tow', tr('Эвакуатор'), tr('по городу от 4000 ₽ — отвезём в автосервис'),
+          const [Color(0xFFFF8A2A), Color(0xFFE85500)], 'от 4000 ₽', () => context.push('/evacuator')),
+      _HubItem('bodycam', tr('Кузовной ремонт'), tr('оценим стоимость по фото бесплатно'),
+          const [Color(0xFF4F8BFF), Color(0xFF1F54D6)], tr('по фото'), () => context.push('/body-repair')),
+      _HubItem('shield', tr('ОСАГО'), tr('по самой выгодной цене для такси'),
+          const [Color(0xFF34D399), Color(0xFF059669)], tr('скоро'), () => _soon(context), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(tr('Сервисы'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4)),
       const SizedBox(height: 12),
-      IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < items.length; i++) ...[
-            Expanded(child: _HubTile(item: items[i])),
-            if (i != items.length - 1) const SizedBox(width: 8),
-          ],
-        ]),
+      SizedBox(
+        height: 214,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (_, i) => _HubCard(item: items[i]),
+        ),
       ),
     ]);
   }
@@ -97,70 +103,99 @@ class ServicesHubSection extends StatelessWidget {
 }
 
 class _HubItem {
-  const _HubItem(this.icon, this.title, this.caption, this.color, this.onTap, {this.soon = false});
-  final String icon, title, caption;
-  final Color color;
+  const _HubItem(this.icon, this.title, this.subtitle, this.colors, this.badge, this.onTap, {this.soon = false});
+  final String icon, title, subtitle, badge;
+  final List<Color> colors;
   final VoidCallback onTap;
   final bool soon;
 }
 
-class _HubTile extends StatelessWidget {
-  const _HubTile({required this.item});
+class _HubCard extends StatefulWidget {
+  const _HubCard({required this.item});
   final _HubItem item;
+  @override
+  State<_HubCard> createState() => _HubCardState();
+}
+
+class _HubCardState extends State<_HubCard> {
+  bool _down = false;
 
   @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: dark ? const Color(0xFF1B1E22) : Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: item.onTap,
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapCancel: () => setState(() => _down = false),
+      onTapUp: (_) => setState(() => _down = false),
+      onTap: item.onTap,
+      child: AnimatedScale(
+        scale: _down ? .97 : 1,
+        duration: const Duration(milliseconds: 140),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(6, 12, 6, 10),
+          width: 236,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: dark ? 0 : .04), blurRadius: 14, offset: const Offset(0, 6))],
+            color: dark ? const Color(0xFF1B1E22) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: dark ? 0 : .07), blurRadius: 18, offset: const Offset(0, 8))],
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 50,
-              height: 50,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: item.soon ? const Color(0xFFFFB27A) : _orange,
-                boxShadow: [BoxShadow(color: _orange.withValues(alpha: .28), blurRadius: 10, offset: const Offset(0, 4))],
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // иллюстрация
+            SizedBox(
+              height: 112,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.colors),
+                ),
+                child: Stack(children: [
+                  Positioned(right: -26, top: -30, child: _circle(120, .14)),
+                  Positioned(right: 54, bottom: -40, child: _circle(90, .10)),
+                  Positioned(left: -20, bottom: -26, child: _circle(70, .08)),
+                  Positioned(
+                    right: 18,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(child: _svg(_Ico.glyph(item.icon), 74)),
+                  ),
+                  Positioned(
+                    left: 14,
+                    top: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .95), borderRadius: BorderRadius.circular(10)),
+                      child: Text(item.badge,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.colors[1])),
+                    ),
+                  ),
+                ]),
               ),
-              child: _svg(_Ico.glyph(item.icon), 28),
             ),
-            const SizedBox(height: 8),
-            Text(item.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: const TextStyle(fontSize: 12, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.2)),
-            const Spacer(),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-              decoration: BoxDecoration(
-                color: item.soon ? cs.surfaceContainerHighest : _orange.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(8),
+            // текст
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                  const SizedBox(height: 4),
+                  Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13.5, height: 1.3, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                ]),
               ),
-              child: Text(item.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : _orange)),
             ),
           ]),
         ),
       ),
     );
   }
+
+  Widget _circle(double d, double a) => Container(
+        width: d,
+        height: d,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: a)),
+      );
 }
 
 // ───────────────────────── Общие части экранов ─────────────────────────
