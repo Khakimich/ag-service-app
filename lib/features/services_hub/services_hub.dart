@@ -43,7 +43,7 @@ class ServicesHubSection extends StatelessWidget {
           const [Color(0xFFFF8A2A), Color(0xFFE04E00)], () => context.push('/evacuator')),
       _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка стоимости по фото'),
           const [Color(0xFF4F8BFF), Color(0xFF2057DF)], () => context.push('/body-repair')),
-      _HubItem('shield', tr('Сравни ОСАГО для такси'), tr('Скоро'),
+      _HubItem('shield', tr('Сравни ОСАГО для такси'), tr('Выгодный полис для работы в такси'),
           const [Color(0xFF34D399), Color(0xFF059669)], () => _soon(context), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
