@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../core/ag_icon3d.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../auth/providers/auth_provider.dart';
@@ -205,15 +206,16 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
             Container(
               width: 54,
               height: 54,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .2), borderRadius: BorderRadius.circular(16)),
-              child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 30),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+              alignment: Alignment.center,
+              child: const AgIcon3D('taxi', size: 40),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(tr('Парк «Азия Про»'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                Text(tr('Яндекс Такси · «Азия Про»'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
-                Text(tr('Оставьте заявку — менеджер свяжется с вами и поможет подключиться'),
+                Text(tr('Комиссия 0%. Оставьте заявку — менеджер поможет подключиться'),
                     style: TextStyle(color: Colors.white.withValues(alpha: .92), fontSize: 13, height: 1.3, fontWeight: FontWeight.w600)),
               ]),
             ),
@@ -243,7 +245,7 @@ class _ParkJoinScreenState extends State<ParkJoinScreen> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final c in _countries)
             ChoiceChip(
-              label: Text('${c[0]}  ${tr(c[1])}'),
+              label: Text(tr(c[1])), // AG_SVCHUB2: без эмодзи-флагов — в веб-версии они не отображались
               selected: _country == c[1],
               showCheckmark: false,
               selectedColor: BrandColors.orange,
