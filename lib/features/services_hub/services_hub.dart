@@ -56,9 +56,9 @@ class ServicesHubSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <_HubItem>[
-      _HubItem('taxi', tr('Работа в такси'), tr('0% комиссия'), const Color(0xFFF5A300), () => context.push('/park')),
+      _HubItem('taxi', tr('Работа в такси'), tr('0% комиссии'), const Color(0xFFF5A300), () => context.push('/park')),
       _HubItem('tow', tr('Эвакуатор'), tr('от 4000 ₽'), const Color(0xFFFF6A00), () => context.push('/evacuator')),
-      _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка по фото'), const Color(0xFF2057DF), () => context.push('/body-repair')),
+      _HubItem('bodycam', tr('Кузовной ремонт'), tr('По фото'), const Color(0xFF2057DF), () => context.push('/body-repair')),
       _HubItem('shield', tr('ОСАГО для такси'), tr('Скоро'), const Color(0xFF059669), () => _soon(context), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
