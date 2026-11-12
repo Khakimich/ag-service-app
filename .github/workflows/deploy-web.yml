@@ -1,0 +1,64 @@
+# AG_WEBDEPLOY1: автосборка веб-версии и выкладка на VPS (app.autogrom.ru)
+# Запускается при каждом изменении в main и вручную (вкладка Actions → Run workflow).
+# Нужные секреты (Settings → Secrets and variables → Actions):
+#   SSH_HOST  — адрес сервера (например job.autogrom.ru или IP)
+#   SSH_USER  — пользователь (например root)
+#   SSH_KEY   — приватный ключ для выкладки (целиком, с BEGIN/END)
+#   WEB_DIR   — папка сайта на сервере (например /var/www/app.autogrom.ru)
+#   SSH_PORT  — (необязательно) порт SSH, по умолчанию 22
+name: Deploy web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Шрифт Roboto (без загрузки с Google при запуске)
+        run: |
+          mkdir -p assets/fonts
+          [ -s assets/fonts/Roboto.ttf ] || curl -fL -o assets/fonts/Roboto.ttf \
+            "https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf"
+
+      - name: Сборка
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn
+          test -d build/web/canvaskit
+
+      - name: SSH-ключ
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Резервная копия и выкладка
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          WEB_DIR: ${{ secrets.WEB_DIR }}
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy -p $SSH_PORT"
+          $SSH "$SSH_USER@$SSH_HOST" "mkdir -p '$WEB_DIR' && cp -a '$WEB_DIR' '${WEB_DIR}.bak_$(date +%Y%m%d_%H%M)' && ls -dt '${WEB_DIR}'.bak_* | tail -n +6 | xargs -r rm -rf"
+          rsync -az --delete --exclude '.htaccess' --exclude '.well-known/' --exclude '*.php' -e "$SSH" build/web/ "$SSH_USER@$SSH_HOST:$WEB_DIR/"
