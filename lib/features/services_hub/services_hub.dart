@@ -23,19 +23,64 @@ const _dept = 'autogrom_service';
 
 // ───────────────────────── Иконки (SVG) ─────────────────────────
 class _Ico {
-  static const _h =
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">';
-  // такси
-  static const taxi = '$_h<path d="M9 4h6l1 3"/><path d="M5 17V12l2-5h10l2 5v5"/><path d="M3 12h18"/>'
-      '<rect x="3" y="12" width="18" height="5" rx="1.5"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/><path d="M10 14.5h4"/></svg>';
-  // эвакуатор
-  static const tow = '$_h<path d="M2 16V8h9v8"/><path d="M11 11h4l3 3v2h-7"/><path d="M11 16H2"/>'
-      '<circle cx="5.5" cy="17.5" r="1.7"/><circle cx="15.5" cy="17.5" r="1.7"/><path d="M18 16h3l1-4-6-6"/><path d="M16 6l-1 2"/></svg>';
-  // кузов + камера
-  static const body = '$_h<path d="M3 15v-3l2.5-4h9L17 12h3a1 1 0 0 1 1 1v2"/><circle cx="7" cy="15.5" r="1.7"/><circle cx="16.5" cy="15.5" r="1.7"/>'
-      '<path d="M8.7 15.5h6.1"/><path d="M14 4.5l1.5 1.5 3-3"/></svg>';
-  // щит ОСАГО
-  static const osago = '$_h<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M8.8 12l2.2 2.2 4.2-4.4"/></svg>';
+  static const _o = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">';
+  // Такси: жёлтая машина с шашечками
+  static const taxi = '$_o<defs>'
+      '<linearGradient id="tb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD84D"/><stop offset="1" stop-color="#F5A300"/></linearGradient>'
+      '<linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#BFE3FF"/><stop offset="1" stop-color="#6FA8DC"/></linearGradient></defs>'
+      '<ellipse cx="32" cy="54" rx="24" ry="3.5" fill="#000" opacity=".15"/>'
+      '<rect x="24" y="10" width="16" height="6" rx="1.5" fill="#222"/>'
+      '<rect x="25.5" y="11.5" width="3.2" height="3" fill="#fff"/><rect x="31.5" y="11.5" width="3.2" height="3" fill="#fff"/><rect x="28.5" y="11.5" width="3" height="1.5" fill="#fff" opacity="0"/>'
+      '<path d="M18 30l4.5-11a4 4 0 0 1 3.7-2.5h11.6a4 4 0 0 1 3.7 2.5L46 30z" fill="url(#tb)"/>'
+      '<path d="M22.5 29l3.4-8.6a2 2 0 0 1 1.9-1.3h8.4a2 2 0 0 1 1.9 1.3l3.4 8.6z" fill="url(#tg)"/>'
+      '<rect x="8" y="28" width="48" height="17" rx="6" fill="url(#tb)"/>'
+      '<rect x="8" y="35" width="48" height="4" fill="#222"/>'
+      '<g fill="#fff"><rect x="10" y="35" width="4" height="2"/><rect x="18" y="35" width="4" height="2"/><rect x="26" y="35" width="4" height="2"/><rect x="34" y="35" width="4" height="2"/><rect x="42" y="35" width="4" height="2"/><rect x="50" y="35" width="4" height="2"/>'
+      '<rect x="14" y="37" width="4" height="2"/><rect x="22" y="37" width="4" height="2"/><rect x="30" y="37" width="4" height="2"/><rect x="38" y="37" width="4" height="2"/><rect x="46" y="37" width="4" height="2"/></g>'
+      '<circle cx="14" cy="31.5" r="2.4" fill="#FFF6D0"/><circle cx="50" cy="31.5" r="2.4" fill="#FFF6D0"/>'
+      '<circle cx="19" cy="46" r="6" fill="#2B2B2B"/><circle cx="19" cy="46" r="2.6" fill="#BDBDBD"/>'
+      '<circle cx="45" cy="46" r="6" fill="#2B2B2B"/><circle cx="45" cy="46" r="2.6" fill="#BDBDBD"/></svg>';
+  // Эвакуатор: грузовик с платформой и машиной
+  static const tow = '$_o<defs>'
+      '<linearGradient id="eb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A3D"/><stop offset="1" stop-color="#E04E00"/></linearGradient>'
+      '<linearGradient id="ec" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DB4FF"/><stop offset="1" stop-color="#2F6FDB"/></linearGradient></defs>'
+      '<ellipse cx="32" cy="55" rx="27" ry="3.2" fill="#000" opacity=".15"/>'
+      '<path d="M15 24h7l2 7H15z" fill="#E04E00"/>'
+      '<path d="M10 34h14l6 6h12v-6h18v10H6V38a4 4 0 0 1 4-4z" fill="#555"/>'
+      '<path d="M8 24a3 3 0 0 1 3-3h8l6 11v12H8z" fill="url(#eb)"/>'
+      '<path d="M12 24h6l4 8H12z" fill="#BFE3FF"/>'
+      '<rect x="8" y="32" width="17" height="2" fill="#B83F00"/>'
+      '<path d="M27 38l31-4v3l-31 4z" fill="#8A8A8A"/>'
+      '<path d="M33 30l3-6a3 3 0 0 1 2.7-1.7h8.6A3 3 0 0 1 50 24l3 6z" fill="url(#ec)"/>'
+      '<path d="M36.5 29.5l2-4h8.5l2 4z" fill="#D8ECFF"/>'
+      '<rect x="31" y="29" width="25" height="6" rx="2.5" fill="url(#ec)" transform="rotate(-7 43 32)"/>'
+      '<rect x="10" y="18" width="7" height="3" rx="1" fill="#FFC53D"/>'
+      '<circle cx="16" cy="46" r="5.5" fill="#2B2B2B"/><circle cx="16" cy="46" r="2.3" fill="#BDBDBD"/>'
+      '<circle cx="46" cy="46" r="5.5" fill="#2B2B2B"/><circle cx="46" cy="46" r="2.3" fill="#BDBDBD"/></svg>';
+  // Кузовной ремонт: машина с вмятиной и камера
+  static const body = '$_o<defs>'
+      '<linearGradient id="bb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FA2FF"/><stop offset="1" stop-color="#2057DF"/></linearGradient>'
+      '<linearGradient id="bc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A4A4A"/><stop offset="1" stop-color="#1F1F1F"/></linearGradient></defs>'
+      '<ellipse cx="30" cy="54" rx="24" ry="3.2" fill="#000" opacity=".15"/>'
+      '<path d="M14 33l5-10a4 4 0 0 1 3.6-2.2h13.8A4 4 0 0 1 40 23l5 10z" fill="url(#bb)"/>'
+      '<path d="M19 32l3.6-7.6a2 2 0 0 1 1.8-1.1h11.2a2 2 0 0 1 1.8 1.1L41 32z" fill="#D8ECFF"/>'
+      '<rect x="6" y="31" width="46" height="15" rx="6" fill="url(#bb)"/>'
+      '<path d="M28 34l3 2-2 2 3 2-1 3" fill="none" stroke="#FFD24D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+      '<circle cx="11" cy="35.5" r="2.2" fill="#FFF6D0"/>'
+      '<circle cx="17" cy="47" r="5.5" fill="#2B2B2B"/><circle cx="17" cy="47" r="2.3" fill="#BDBDBD"/>'
+      '<circle cx="41" cy="47" r="5.5" fill="#2B2B2B"/><circle cx="41" cy="47" r="2.3" fill="#BDBDBD"/>'
+      '<rect x="40" y="8" width="20" height="15" rx="4" fill="url(#bc)"/><rect x="45" y="5.5" width="7" height="4" rx="1.5" fill="#333"/>'
+      '<circle cx="50" cy="15.5" r="4.6" fill="#7DB4FF" stroke="#E8F1FF" stroke-width="1.6"/><circle cx="51.3" cy="14.2" r="1.2" fill="#fff"/>'
+      '<circle cx="56" cy="11.5" r="1" fill="#FF6A00"/></svg>';
+  // ОСАГО: щит с галочкой и документ
+  static const osago = '$_o<defs>'
+      '<linearGradient id="og" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4BE3A6"/><stop offset="1" stop-color="#059669"/></linearGradient></defs>'
+      '<ellipse cx="32" cy="57" rx="18" ry="2.8" fill="#000" opacity=".15"/>'
+      '<rect x="11" y="12" width="28" height="36" rx="4" fill="#fff" stroke="#D1D5DB" stroke-width="1.5" transform="rotate(-8 25 30)"/>'
+      '<g stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" transform="rotate(-8 25 30)"><path d="M16 20h17"/><path d="M16 26h17"/><path d="M16 32h11"/></g>'
+      '<path d="M38 18l15 6v10c0 9.5-6.3 17.3-15 21-8.7-3.7-15-11.5-15-21V24z" fill="url(#og)"/>'
+      '<path d="M38 21.5l11.5 4.6V34c0 7.6-4.8 14-11.5 17.2z" fill="#fff" opacity=".18"/>'
+      '<path d="M31.5 35.5l4.5 4.5 9-9.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   static const pin = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
       '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 }
@@ -105,14 +150,15 @@ class _HubTile extends StatelessWidget {
           ),
           child: Row(children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 52,
+              height: 52,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.colors),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [item.colors[0].withValues(alpha: .16), item.colors[1].withValues(alpha: .10)]),
               ),
-              child: _svg(item.icon, 26),
+              child: _svg(item.icon, 38),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -366,9 +412,8 @@ class _EvacuatorScreenState extends State<EvacuatorScreen> {
           child: Row(children: [
             Container(
               width: 42, height: 42, alignment: Alignment.center,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(colors: [Color(0xFFFF8A2A), Color(0xFFE04E00)])),
-              child: _svg(_Ico.tow, 24),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
+              child: _svg(_Ico.tow, 34),
             ),
             const SizedBox(width: 12),
             Expanded(child: Text(tr('Эвакуатор по городу от 4000 ₽'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
