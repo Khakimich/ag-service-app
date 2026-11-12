@@ -23,6 +23,7 @@ import '../providers/company_provider.dart';
 import '../providers/referrals_provider.dart';
 import '../../../core/i18n.dart'; // AG_I18N1
 import '../../../core/ag_levels.dart'; // AG_REFLVL1
+import '../../services_hub/services_hub.dart'; // AG_SVCHUB1
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,8 +136,7 @@ class _HomeScreenState extends State<HomeScreen>
                     _quickActions(),
                     const SizedBox(height: 16),
 
-                    _parkBanner(), // AG_PARK1
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 4), // AG_SVCHUB1: баннер «Азия Про» перенесён в раздел «Сервисы»
 
                     _sectionHeader(
                       tr('Популярные услуги'),
@@ -157,6 +157,9 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 24),
 
                     _newsPreview(),
+                    const SizedBox(height: 24),
+
+                    const ServicesHubSection(), // AG_SVCHUB1
                   ],
                 ),
               ),

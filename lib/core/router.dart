@@ -35,6 +35,7 @@ import '../models/ag_news_item.dart';
 import '../models/chat_conversation.dart';
 import 'main_shell.dart';
 import '../features/park/park_join_screen.dart'; // AG_PARK1
+import '../features/services_hub/services_hub.dart'; // AG_SVCHUB1
 
 GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
   initialLocation: '/',
@@ -49,7 +50,9 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
         path == '/booking/confirm' ||
         path == '/booking/success' ||
         path == '/booking/reschedule' ||
-        path == '/recommendations';
+        path == '/recommendations' ||
+        path == '/evacuator' || // AG_SVCHUB1: заявка уходит в чат — нужен вход
+        path == '/body-repair';
 
     if (requiresAuth && !authProvider.isLoggedIn) {
       return '/login';
@@ -108,6 +111,8 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
         ),
         GoRoute(path: '/about', builder: (_, __) => const AboutServiceScreen()),
         GoRoute(path: '/park', builder: (_, __) => const ParkJoinScreen()), // AG_PARK1
+        GoRoute(path: '/evacuator', builder: (_, __) => const EvacuatorScreen()), // AG_SVCHUB1
+        GoRoute(path: '/body-repair', builder: (_, __) => const BodyRepairScreen()), // AG_SVCHUB1
         GoRoute(path: '/chats', builder: (_, __) => const ChatsScreen()),
         GoRoute(
           path: '/profile',
