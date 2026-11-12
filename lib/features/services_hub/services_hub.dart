@@ -39,7 +39,6 @@ class _Ico {
   static String plus([String c = '#FF6A00']) => _l(c, '<path d="M12 5v14M5 12h14"/>', 2.4);
   static String close([String c = '#FFFFFF']) => _l(c, '<path d="M6 6l12 12M18 6L6 18"/>', 2.6);
   static String check([String c = '#FFFFFF']) => _l(c, '<path d="M5 12.5l4.5 4.5L19 7.5"/>', 3);
-  static String chevron([String c = '#FF6A00']) => _l(c, '<path d="M9 5l7 7-7 7"/>', 2.4);
   static String chat([String c = '#FFFFFF']) => _l(c, '<path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"/>');
   static String clock([String c = '#FFFFFF']) => _l(c, '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
   static String ruble([String c = '#FFFFFF']) => _l(c, '<path d="M8 20V4h5.5a4 4 0 0 1 0 8H6M6 16h8"/>');
@@ -50,28 +49,29 @@ class _Ico {
 Widget _svg(String s, double size) => SvgPicture.string(s, width: size, height: size);
 
 // ───────────────────────── Раздел на главной ─────────────────────────
+// AG_SVCHUB3: четыре плитки в один ряд — 3D-иконка сверху, короткая подпись снизу.
 class ServicesHubSection extends StatelessWidget {
   const ServicesHubSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final items = <_HubItem>[
-      _HubItem('taxi', tr('Работа в Яндекс Такси'), tr('Парк «Азия Про» · комиссия 0%'),
-          const [Color(0xFFFFC53D), Color(0xFFF59E0B)], () => context.push('/park')),
-      _HubItem('tow', tr('Вызвать эвакуатор'), tr('По городу от 4000 ₽'),
-          const [Color(0xFFFF8A2A), Color(0xFFE04E00)], () => context.push('/evacuator')),
-      _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка стоимости по фото'),
-          const [Color(0xFF4F8BFF), Color(0xFF2057DF)], () => context.push('/body-repair')),
-      _HubItem('shield', tr('Сравни ОСАГО для такси'), tr('Выгодный полис для работы в такси'),
-          const [Color(0xFF34D399), Color(0xFF059669)], () => _soon(context), soon: true),
+      _HubItem('taxi', tr('Работа в такси'), tr('0% комиссия'), const Color(0xFFF5A300), () => context.push('/park')),
+      _HubItem('tow', tr('Эвакуатор'), tr('от 4000 ₽'), const Color(0xFFFF6A00), () => context.push('/evacuator')),
+      _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка по фото'), const Color(0xFF2057DF), () => context.push('/body-repair')),
+      _HubItem('shield', tr('ОСАГО для такси'), tr('Скоро'), const Color(0xFF059669), () => _soon(context), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(tr('Сервисы'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4)),
       const SizedBox(height: 12),
-      for (var i = 0; i < items.length; i++) ...[
-        _HubTile(item: items[i]),
-        if (i != items.length - 1) const SizedBox(height: 10),
-      ],
+      IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(child: _HubTile(item: items[i])),
+            if (i != items.length - 1) const SizedBox(width: 8),
+          ],
+        ]),
+      ),
     ]);
   }
 
@@ -83,9 +83,9 @@ class ServicesHubSection extends StatelessWidget {
 }
 
 class _HubItem {
-  const _HubItem(this.icon, this.title, this.subtitle, this.colors, this.onTap, {this.soon = false});
-  final String icon, title, subtitle;
-  final List<Color> colors;
+  const _HubItem(this.icon, this.title, this.caption, this.color, this.onTap, {this.soon = false});
+  final String icon, title, caption;
+  final Color color;
   final VoidCallback onTap;
   final bool soon;
 }
@@ -100,46 +100,47 @@ class _HubTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: dark ? const Color(0xFF1B1E22) : Colors.white,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
+      elevation: 0,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         onTap: item.onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+          padding: const EdgeInsets.fromLTRB(6, 12, 6, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: .5)),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+            boxShadow: [BoxShadow(color: item.color.withValues(alpha: dark ? 0 : .08), blurRadius: 14, offset: const Offset(0, 6))],
           ),
-          child: Row(children: [
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [item.colors[0].withValues(alpha: .14), item.colors[1].withValues(alpha: .08)]),
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [item.color.withValues(alpha: .16), item.color.withValues(alpha: .04)]),
               ),
-              child: AgIcon3D(item.icon, size: 40),
+              child: AgIcon3D(item.icon, size: 42),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: -.2)),
-                const SizedBox(height: 2),
-                Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
-              ]),
+            const SizedBox(height: 8),
+            Text(item.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 12, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.2)),
+            const Spacer(),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+              decoration: BoxDecoration(
+                color: item.soon ? cs.surfaceContainerHighest : item.color.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(item.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.color)),
             ),
-            if (item.soon)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
-                child: Text(tr('Скоро'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: cs.onSurfaceVariant)),
-              )
-            else
-              _svg(_Ico.chevron(), 20),
           ]),
         ),
       ),
