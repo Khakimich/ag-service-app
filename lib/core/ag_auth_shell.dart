@@ -1,3 +1,4 @@
+import 'dart:async';
 // AG_AUTH4..6 — общий вид входа и регистрации: живой фон, фирменная карта AG BONUS, стеклянная форма,
 // переключатель «Вход / Регистрация». Светлая и тёмная тема, телефон / планшет / компьютер.
 import 'glass.dart' show kGlassBlur; // AG_WEBFAST1
@@ -191,62 +192,104 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Бренд + фирменная карта AG BONUS + преимущества.
-class _Promo extends StatelessWidget {
+/// AG_AUTH7: фото нашего сервиса (листаются сами) + бренд + преимущества с SVG-иконками.
+class _Promo extends StatefulWidget {
   const _Promo({required this.p, required this.wide});
   final AgAuthPal p;
   final bool wide;
+  @override
+  State<_Promo> createState() => _PromoState();
+}
+
+class _PromoState extends State<_Promo> {
+  static const _photos = ['assets/images/auth/service_outside.jpg', 'assets/images/auth/service_inside.jpg'];
+  int _i = 0;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 5), (_) { if (mounted) setState(() => _i = (_i + 1) % _photos.length); });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    for (final ph in _photos) { precacheImage(AssetImage(ph), context); }
+  }
+
+  @override
+  void dispose() { _t?.cancel(); super.dispose(); }
+
+  Widget _feature(String icon, String text) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withValues(alpha: .28))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          AgIcon(icon, size: 15, color: Colors.white, strokeWidth: 2),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+        ]),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final brand = Row(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        width: wide ? 54 : 44,
-        height: wide ? 54 : 44,
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(wide ? 17 : 14),
-            boxShadow: [BoxShadow(color: BrandColors.orange.withValues(alpha: .25), blurRadius: 18, offset: const Offset(0, 6))]),
-        child: Image.asset('assets/logo.png', fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Center(child: Text('AG', style: TextStyle(color: BrandColors.orange, fontWeight: FontWeight.w900)))),
+    final wide = widget.wide;
+    final h = wide ? 560.0 : 250.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(wide ? 32 : 26),
+      child: SizedBox(
+        height: h,
+        width: double.infinity,
+        child: Stack(fit: StackFit.expand, children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 900),
+            child: Image.asset(_photos[_i], key: ValueKey(_i), fit: BoxFit.cover, width: double.infinity, height: h,
+                errorBuilder: (_, __, ___) => const ColoredBox(color: BrandColors.orange)),
+          ),
+          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              colors: [Color(0x33000000), Color(0x00000000), Color(0xCC0B0D10)], stops: [0, .35, 1]))),
+          Positioned(
+            left: wide ? 32 : 18, right: wide ? 32 : 18, bottom: wide ? 32 : 18,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [
+                Container(
+                  width: wide ? 50 : 40, height: wide ? 50 : 40,
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(wide ? 15 : 12), border: Border.all(color: Colors.white, width: 2)),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text('AG SERVICE', style: TextStyle(color: Colors.white, fontSize: wide ? 22 : 17, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                  Text(tr('Автосервис в Екатеринбурге'), style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ]),
+              ]),
+              if (wide) ...[
+                const SizedBox(height: 18),
+                Text(tr('Запись в сервис,\nремонт и бонусы —\nв одном приложении'),
+                    style: const TextStyle(color: Colors.white, fontSize: 34, height: 1.12, fontWeight: FontWeight.w900, letterSpacing: -.8)),
+              ],
+              SizedBox(height: wide ? 18 : 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _feature(AgAuthIcons.calendar, tr('Запись за минуту')),
+                _feature(AgAuthIcons.camera, tr('Фото приёмки')),
+                _feature(AgAuthIcons.wallet, tr('Бонусы в ₽')),
+              ]),
+            ]),
+          ),
+          Positioned(
+            top: 14, right: 14,
+            child: Row(children: List.generate(_photos.length, (k) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.only(left: 5),
+              width: k == _i ? 18 : 6, height: 6,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: k == _i ? 1 : .55), borderRadius: BorderRadius.circular(3)),
+            ))),
+          ),
+        ]),
       ),
-      const SizedBox(width: 12),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text('AG SERVICE', style: TextStyle(color: p.ink, fontSize: wide ? 22 : 18, fontWeight: FontWeight.w900, letterSpacing: 2.2)),
-        Text(tr('автосервис в телефоне'), style: TextStyle(color: p.mut, fontSize: 13, fontWeight: FontWeight.w600)),
-      ]),
-    ]);
-    if (!wide) {
-      return Column(children: [
-        brand,
-        const SizedBox(height: 16),
-        const SizedBox(height: 178, child: AgBonusMiniCard(compact: true)),
-      ]);
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      brand,
-      const SizedBox(height: 26),
-      Text(tr('Запись в сервис,\nремонт и бонусы —\nв одном приложении'),
-          style: TextStyle(color: p.ink, fontSize: 38, height: 1.12, fontWeight: FontWeight.w900, letterSpacing: -1)),
-      const SizedBox(height: 26),
-      const SizedBox(width: 380, height: 236, child: AgBonusMiniCard(compact: false)),
-      const SizedBox(height: 26),
-      for (final f in [
-        (AgAuthIcons.calendar, tr('Запись к мастеру за минуту')),
-        (AgAuthIcons.camera, tr('Фото и видео приёмки вашего авто')),
-        (AgAuthIcons.wallet, tr('Бонусный счёт в рублях')),
-      ])
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(children: [
-            Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(color: BrandColors.orange.withValues(alpha: .12), borderRadius: BorderRadius.circular(12)),
-              child: Center(child: AgIcon(f.$1, size: 20, color: BrandColors.orange, strokeWidth: 2)),
-            ),
-            const SizedBox(width: 12),
-            Text(f.$2, style: TextStyle(color: p.ink, fontSize: 15.5, fontWeight: FontWeight.w700)),
-          ]),
-        ),
-    ]);
+    );
   }
 }
 
