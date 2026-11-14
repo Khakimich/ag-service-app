@@ -222,6 +222,20 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                Container( // AG_REFRED1: главное правило крупно и красным
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFD32F2F), width: 2),
+                  ),
+                  child: Text(
+                    trf('Другу — {0} ₽ сразу после регистрации.\nВам — {1} ₽, когда друг приедет в сервис и пройдёт любую услугу.', [summary.friendReward, summary.referrerFirstVisitReward]),
+                    style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 20, fontWeight: FontWeight.w900, height: 1.3),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _RuleTile(
                   icon: Icons.person_add_alt_1_rounded,
                   title: tr('Друг регистрируется по ссылке'),
