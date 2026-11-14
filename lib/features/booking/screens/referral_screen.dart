@@ -119,7 +119,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          trf('{0} баллов', [summary.bonusPoints]),
+                          trf('{0} ₽', [summary.bonusPoints]),
                           style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
@@ -143,7 +143,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  tr('Делитесь ссылкой ниже. Друг получит приветственные баллы, а вы получите бонусы за его регистрацию и первый визит!'),
+                  trf('Делитесь ссылкой ниже. Друг получит {0} ₽ сразу после регистрации, а вы — {1} ₽ после его первого визита в сервис.', [summary.friendReward, summary.referrerFirstVisitReward]),
                   style: TextStyle(
                     fontSize: 14,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -257,7 +257,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 _RuleTile(
                   icon: Icons.person_add_alt_1_rounded,
                   title: tr('Друг регистрируется по ссылке'),
-                  description: trf('Другу сразу начисляется {0} приветственных бонусов.', [summary.friendReward]),
+                  description: trf('Другу сразу начисляется {0} ₽ на бонусный счёт.', [summary.friendReward]),
                 ),
                 if (summary.referrerSignupReward > 0)
                   _RuleTile(
