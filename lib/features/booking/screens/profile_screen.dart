@@ -2,6 +2,7 @@ import 'package:mobile/core/update_checker.dart'; // AG_FIX1
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../profile/screens/documents_screen.dart';
+import '../../profile/screens/feedback_sheet.dart'; // AG_FEEDBACK1
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -304,6 +305,12 @@ class _UserView extends StatelessWidget {
                     },
                   ),
                   const _ProfileDivider(),
+                  _ProfileItem( // AG_FEEDBACK1
+                    icon: 'assets/icons/profile/info.svg',
+                    title: tr('Нашли ошибку? Есть идея?'),
+                    subtitle: tr('Напишите нам — ответим на почту'),
+                    onTap: () => showFeedbackSheet(context),
+                  ),                  const _ProfileDivider(),
                   _ProfileItem(
                     icon: 'assets/icons/profile/info.svg',
                     title: tr('О приложении'),
@@ -981,6 +988,7 @@ class _AgTile extends StatelessWidget { // AG_PROFICON3: строгие лине
   final String asset;
 
   static const Map<String, String> _svg = {
+    'feedback': '<path d="M5.5 4.5h13a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H11l-4.5 3.5V17H5.5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><path d="M12 8v3.6"/><circle cx="12" cy="14" r=".9" fill="C" stroke="none"/>',
     'personal': '<circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20c.9-3.6 3.8-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
     'car': '<path d="M4.5 13.5l1.6-4.6A2 2 0 0 1 8 7.5h8a2 2 0 0 1 1.9 1.4l1.6 4.6"/><rect x="3.5" y="13.2" width="17" height="4.6" rx="1.4"/><path d="M6 17.8v1.7M18 17.8v1.7"/><circle cx="7.4" cy="15.5" r=".9" fill="C" stroke="none"/><circle cx="16.6" cy="15.5" r=".9" fill="C" stroke="none"/>',
     'notifications': '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z"/><path d="M10.2 20.2a2 2 0 0 0 3.6 0"/>',
@@ -1009,6 +1017,7 @@ class _AgTile extends StatelessWidget { // AG_PROFICON3: строгие лине
     if (t.contains('оформл')) return 'theme';
     if (t.contains('обновл')) return 'refresh';
     if (t.contains('кэш')) return 'cache';
+    if (t.contains('ошибк') || t.contains('иде')) return 'feedback';
     if (t.contains('документ')) return 'doc';
     return 'info';
   }
