@@ -975,65 +975,61 @@ class _VerifyPhoneDialogState extends State<_VerifyPhoneDialog> {
 
 // ---------- AG_PROF6: новый вид «Настроек» — цветные SVG-плитки, карточка профиля, карточка входа ----------
 
-class _AgTile extends StatelessWidget { // AG_PROFICON2: двухцветные SVG-иконки, светлая и тёмная тема
+class _AgTile extends StatelessWidget { // AG_PROFICON3: строгие линейные SVG-иконки, светлая и тёмная тема
   const _AgTile({required this.title, required this.asset});
   final String title;
   final String asset;
 
   static const Map<String, String> _svg = {
-    'personal': '<circle cx="12" cy="8" r="4.2" fill="A"/><path d="M3.8 20.2c.6-4.3 4-7 8.2-7s7.6 2.7 8.2 7c.1.5-.3.8-.8.8H4.6c-.5 0-.9-.3-.8-.8z" fill="B"/><circle cx="10.6" cy="6.8" r="1.2" fill="W" opacity=".55"/>',
-    'car': '<path d="M5.2 10.2l1.6-4c.4-1 1.3-1.6 2.3-1.6h5.8c1 0 1.9.6 2.3 1.6l1.6 4" fill="B"/><rect x="2.6" y="9.6" width="18.8" height="7.4" rx="2.4" fill="A"/><rect x="4.2" y="16" width="3.6" height="3.4" rx="1.1" fill="A"/><rect x="16.2" y="16" width="3.6" height="3.4" rx="1.1" fill="A"/><circle cx="6.6" cy="13.2" r="1.4" fill="W"/><circle cx="17.4" cy="13.2" r="1.4" fill="W"/><path d="M8 7.4h8l1 2.4H7z" fill="W" opacity=".5"/>',
-    'notifications': '<path d="M12 3a6 6 0 0 0-6 6v3.6l-1.6 2.6c-.4.7.1 1.6.9 1.6h13.4c.8 0 1.3-.9.9-1.6L18 12.6V9a6 6 0 0 0-6-6z" fill="A"/><path d="M9.5 18.6a2.6 2.6 0 0 0 5 0z" fill="B"/><circle cx="18" cy="5.5" r="2.6" fill="B" stroke="W" stroke-width="1.2"/><path d="M8.6 7.6a3.6 3.6 0 0 1 2.2-2" stroke="W" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".6"/>',
-    'gift': '<rect x="3.5" y="8.5" width="17" height="4" rx="1.2" fill="A"/><rect x="4.8" y="12.5" width="14.4" height="8" rx="1.4" fill="B"/><rect x="10.8" y="8.5" width="2.4" height="12" fill="W" opacity=".85"/><path d="M12 8.4c-1.3-3-5.2-4.1-5.6-1.8-.3 1.6 2.3 1.9 5.6 1.8zm0 0c1.3-3 5.2-4.1 5.6-1.8.3 1.6-2.3 1.9-5.6 1.8z" fill="A"/>',
-    'message': '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.2 3.6c-.5.4-1.2.1-1.2-.6V16A2.5 2.5 0 0 1 4 13.5z" fill="A"/><path d="M7.5 12.2V7.4l4.5 3.6 4.5-3.6v4.8" stroke="W" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" fill="none"/>',
-    'lock': '<path d="M7.5 10V7.6a4.5 4.5 0 0 1 9 0V10" stroke="B" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="4.5" y="9.6" width="15" height="11" rx="3" fill="A"/><circle cx="12" cy="14.4" r="1.7" fill="W"/><rect x="11.2" y="15" width="1.6" height="3" rx=".8" fill="W"/>',
-    'globe': '<circle cx="12" cy="12" r="9" fill="A"/><path d="M3.4 9.6c2.2.4 3 1.6 4.6 1.6 1.4 0 1.4 1.8 2.8 2.6 1 .6.6 2.4-.2 3.4-.7.9-.4 2.4.2 3.6A9 9 0 0 1 3.4 9.6zM14.6 3.4c-.6 1.2-.2 2.2 1 2.6 1.3.4 1.4 1.8 2.6 2.2 1 .3 1.9-.1 2.6-.6a9 9 0 0 0-6.2-4.2zM20.4 14.2c-1.2-.4-2.6.2-3.2 1.4-.6 1.1-1.8 1.6-1.6 3 .1.8.4 1.4.8 1.9a9 9 0 0 0 4-6.3z" fill="B"/><circle cx="9" cy="7" r="1.4" fill="W" opacity=".5"/>',
-    'theme': '<circle cx="12" cy="12" r="8.6" fill="B"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="A"/><circle cx="12" cy="12" r="3.4" fill="W"/><path d="M12 8.6a3.4 3.4 0 0 1 0 6.8z" fill="A"/>',
-    'refresh': '<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1" stroke="A" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M4.5 12a7.5 7.5 0 0 1 13-5.1" stroke="B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M18.6 3.2v4.6H14z" fill="B"/><path d="M5.4 20.8v-4.6H10z" fill="A"/>',
-    'cache': '<rect x="4" y="5.6" width="16" height="2.6" rx="1.3" fill="A"/><path d="M9.4 5.6V4.4c0-.8.6-1.4 1.4-1.4h2.4c.8 0 1.4.6 1.4 1.4v1.2" stroke="A" stroke-width="1.8" fill="none"/><path d="M5.6 9.2h12.8l-1 10.2c-.1 1-1 1.6-2 1.6H8.6c-1 0-1.9-.7-2-1.6z" fill="B"/><path d="M10 12v5.6M14 12v5.6" stroke="W" stroke-width="1.7" stroke-linecap="round"/>',
-    'doc': '<path d="M6.5 2.8h7.6l4.6 4.6V19a2.2 2.2 0 0 1-2.2 2.2H6.5A2.2 2.2 0 0 1 4.3 19V5a2.2 2.2 0 0 1 2.2-2.2z" fill="A"/><path d="M14.1 2.8v3.4c0 .7.5 1.2 1.2 1.2h3.4z" fill="B"/><path d="M8 11.2h8M8 14.4h8M8 17.6h5" stroke="W" stroke-width="1.6" stroke-linecap="round"/>',
-    'info': '<circle cx="12" cy="12" r="9" fill="A"/><circle cx="12" cy="7.6" r="1.5" fill="W"/><rect x="10.7" y="10.4" width="2.6" height="7.4" rx="1.3" fill="W"/><path d="M5.6 9a7 7 0 0 1 3.2-4" stroke="B" stroke-width="1.6" stroke-linecap="round" fill="none"/>',
-    'history': '<circle cx="12" cy="12.6" r="8.4" fill="A"/><path d="M12 8v5l3.2 2" stroke="W" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M3 5.6l3.2.4-.6 3" stroke="B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+    'personal': '<circle cx="12" cy="8.2" r="3.7"/><path d="M4.8 20c.9-3.6 3.8-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
+    'car': '<path d="M4.5 13.5l1.6-4.6A2 2 0 0 1 8 7.5h8a2 2 0 0 1 1.9 1.4l1.6 4.6"/><rect x="3.5" y="13.2" width="17" height="4.6" rx="1.4"/><path d="M6 17.8v1.7M18 17.8v1.7"/><circle cx="7.4" cy="15.5" r=".9" fill="C" stroke="none"/><circle cx="16.6" cy="15.5" r=".9" fill="C" stroke="none"/>',
+    'notifications': '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z"/><path d="M10.2 20.2a2 2 0 0 0 3.6 0"/>',
+    'history': '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4.5v3.8h3.8"/><path d="M12 8v4.3l2.8 1.7"/>',
+    'gift': '<rect x="4" y="9" width="16" height="11" rx="1.6"/><path d="M3.5 9h17v3.2h-17zM12 9v11"/><path d="M12 9c-1.4-3.4-5.4-3.7-5.4-1.5 0 1.3 2.2 1.5 5.4 1.5zm0 0c1.4-3.4 5.4-3.7 5.4-1.5 0 1.3-2.2 1.5-5.4 1.5z"/>',
+    'message': '<path d="M5.5 4.5h13a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H11l-4.5 3.5V17H5.5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><path d="M8 13V8.6l4 3.2 4-3.2V13"/>',
+    'lock': '<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/><path d="M12 14.6v2.2"/>',
+    'globe': '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.4 5.3 3.4 8.5s-1 6.1-3.4 8.5c-2.4-2.4-3.4-5.3-3.4-8.5s1-6.1 3.4-8.5z"/>',
+    'theme': '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="C" stroke="none"/>',
+    'refresh': '<path d="M19.5 12a7.5 7.5 0 0 1-13.2 4.9"/><path d="M4.5 12a7.5 7.5 0 0 1 13.2-4.9"/><path d="M17.9 3.6v3.6h-3.6M6.1 20.4v-3.6h3.6"/>',
+    'cache': '<path d="M4.5 6.5h15M9.5 6.5V4.8h5v1.7"/><path d="M6.2 6.5l.9 12.4a1.6 1.6 0 0 0 1.6 1.6h6.6a1.6 1.6 0 0 0 1.6-1.6l.9-12.4"/><path d="M10 10.5v6M14 10.5v6"/>',
+    'doc': '<path d="M7 3.5h7l4 4v12a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 19.5V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V7.5h4M8.6 12h6.8M8.6 15.4h6.8M8.6 18.6h4"/>',
+    'info': '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".9" fill="C" stroke="none"/>'
   };
 
-  (String, Color, Color) _style() {
+  String _key() {
     final t = AgI18n.orig(title).toLowerCase(); // AG_I18N1
-    if (t.contains('язык')) return ('globe', const Color(0xFF0284C7), const Color(0xFF7DD3FC));
-    if (t.contains('личн')) return ('personal', const Color(0xFF2563EB), const Color(0xFF93C5FD));
-    if (t.contains('автомоб')) return ('car', const Color(0xFFF26200), const Color(0xFFFFB27A));
-    if (t.contains('уведомл')) return ('notifications', const Color(0xFFDC2626), const Color(0xFFFCA5A5));
-    if (t.contains('истори')) return ('history', const Color(0xFFDC2626), const Color(0xFFFCA5A5));
-    if (t.contains('бонус')) return ('gift', const Color(0xFFF59E0B), const Color(0xFFFCD34D));
-    if (t.contains('max')) return ('message', const Color(0xFF4F46E5), const Color(0xFFA5B4FC));
-    if (t.contains('безопас')) return ('lock', const Color(0xFF059669), const Color(0xFF6EE7B7));
-    if (t.contains('оформл')) return ('theme', const Color(0xFF7C3AED), const Color(0xFFC4B5FD));
-    if (t.contains('обновл')) return ('refresh', const Color(0xFF0891B2), const Color(0xFF67E8F9));
-    if (t.contains('кэш')) return ('cache', const Color(0xFF64748B), const Color(0xFFCBD5E1));
-    if (t.contains('документ')) return ('doc', const Color(0xFF0D9488), const Color(0xFF5EEAD4));
-    if (t.contains('о прилож')) return ('info', const Color(0xFFF26200), const Color(0xFFFFB27A));
-    return ('info', const Color(0xFF6B7280), const Color(0xFFD1D5DB));
+    if (t.contains('язык')) return 'globe';
+    if (t.contains('личн')) return 'personal';
+    if (t.contains('автомоб')) return 'car';
+    if (t.contains('уведомл')) return 'notifications';
+    if (t.contains('истори')) return 'history';
+    if (t.contains('бонус')) return 'gift';
+    if (t.contains('max')) return 'message';
+    if (t.contains('безопас')) return 'lock';
+    if (t.contains('оформл')) return 'theme';
+    if (t.contains('обновл')) return 'refresh';
+    if (t.contains('кэш')) return 'cache';
+    if (t.contains('документ')) return 'doc';
+    return 'info';
   }
-
-  static String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final (key, main, light) = _style();
-    final body = _svg[key]!
-        .replaceAll('"A"', '"${_hex(main)}"')
-        .replaceAll('"B"', '"${_hex(light)}"')
-        .replaceAll('"W"', '"#FFFFFF"');
+    final c = dark ? '#E5E7EB' : '#1F2937';
+    final body = _svg[_key()]!.replaceAll('"C"', '"$c"');
     return Container(
       width: 42,
       height: 42,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(13),
-        color: main.withValues(alpha: dark ? .22 : .12),
-        border: Border.all(color: main.withValues(alpha: dark ? .30 : .10)),
+        borderRadius: BorderRadius.circular(12),
+        color: dark ? const Color(0xFF1E232A) : const Color(0xFFF2F3F5),
+        border: Border.all(color: dark ? const Color(0xFF2B323B) : const Color(0xFFE5E7EB)),
       ),
       alignment: Alignment.center,
-      child: SvgPicture.string('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">$body</svg>', width: 24, height: 24),
+      child: SvgPicture.string(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="$c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">$body</svg>',
+        width: 22, height: 22),
     );
   }
 }
