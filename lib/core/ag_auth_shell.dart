@@ -222,20 +222,20 @@ class _PromoState extends State<_Promo> {
   void dispose() { _t?.cancel(); super.dispose(); }
 
   Widget _feature(String icon, String text) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(30),
             border: Border.all(color: Colors.white.withValues(alpha: .28))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           AgIcon(icon, size: 15, color: Colors.white, strokeWidth: 2),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
         ]),
       );
 
   @override
   Widget build(BuildContext context) {
     final wide = widget.wide;
-    final h = wide ? 560.0 : 250.0;
+    final h = wide ? 560.0 : 270.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(wide ? 32 : 26),
       child: SizedBox(
@@ -245,10 +245,11 @@ class _PromoState extends State<_Promo> {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 900),
             child: Image.asset(_photos[_i], key: ValueKey(_i), fit: BoxFit.cover, width: double.infinity, height: h,
+                alignment: _i == 0 ? const Alignment(0.1, -0.6) : const Alignment(0, -0.2), // AG_AUTH8: вывеска и здание в кадре
                 errorBuilder: (_, __, ___) => const ColoredBox(color: BrandColors.orange)),
           ),
           const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [Color(0x33000000), Color(0x00000000), Color(0xCC0B0D10)], stops: [0, .35, 1]))),
+              colors: [Color(0x22000000), Color(0x00000000), Color(0xD90B0D10)], stops: [0, .45, 1]))),
           Positioned(
             left: wide ? 32 : 18, right: wide ? 32 : 18, bottom: wide ? 32 : 18,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
