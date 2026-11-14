@@ -38,7 +38,8 @@ foreach (json_decode(file_get_contents(__DIR__ . '/catalog_import.json'), true)[
 $all = $d['services'] ?? [];
 if (count($all) < 300) { echo "Список услуг не получен ($code)\n"; return; }
 $new = []; $old = [];
-foreach ($all as $s) { if (isset($keep[mb_strtolower(trim($s['title']))])) $new[] = $s; else $old[$s['id']] = $s; }
+$oldByTitle = [];
+foreach ($all as $s) { if (isset($keep[mb_strtolower(trim($s['title']))])) $new[] = $s; else { $old[$s['id']] = $s; $oldByTitle[mb_strtolower(trim($s['title']))] = $s['id']; } }
 echo "Новых услуг: " . count($new) . ", старых: " . count($old) . "\n";
 
 // подбор новой услуги для каждой старой
@@ -57,7 +58,7 @@ foreach ($specs as $m) for ($t = $from; $t <= $to; $t += 86400) $paths[$m['id'] 
 echo "Мастеров: " . count($specs) . ", проверяю дней: " . count($paths) . " (пара минут)...\n";
 $found = [];
 foreach (multi_get($paths) as $r) foreach (($r['bookings'] ?? $r['data'] ?? []) as $b) {
-    $sid = $b['service']['id'] ?? ($b['service_id'] ?? null);
+    $sid = $oldByTitle[mb_strtolower(trim((string)($b['service_name'] ?? '')))] ?? null;
     if ($sid && isset($old[$sid])) $found[$b['id']] = $b + ['_sid' => $sid];
 }
 echo "Записей на старые услуги: " . count($found) . "\n";
