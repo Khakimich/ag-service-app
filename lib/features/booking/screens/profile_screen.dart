@@ -975,49 +975,65 @@ class _VerifyPhoneDialogState extends State<_VerifyPhoneDialog> {
 
 // ---------- AG_PROF6: новый вид «Настроек» — цветные SVG-плитки, карточка профиля, карточка входа ----------
 
-class _AgTile extends StatelessWidget {
+class _AgTile extends StatelessWidget { // AG_PROFICON2: двухцветные SVG-иконки, светлая и тёмная тема
   const _AgTile({required this.title, required this.asset});
   final String title;
   final String asset;
 
-  static const _refresh = '<path d="M20 11a8 8 0 0 0-14.6-4.5L3 9"/><path d="M3 4v5h5"/><path d="M4 13a8 8 0 0 0 14.6 4.5L21 15"/><path d="M21 20v-5h-5"/>';
-  static const _doc = '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>';
-  static const _info = '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>';
-  static const _globe = '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/>';
-  static const _max = '<path d="M4 18V6l8 7 8-7v12"/>';
+  static const Map<String, String> _svg = {
+    'personal': '<circle cx="12" cy="8" r="4.2" fill="A"/><path d="M3.8 20.2c.6-4.3 4-7 8.2-7s7.6 2.7 8.2 7c.1.5-.3.8-.8.8H4.6c-.5 0-.9-.3-.8-.8z" fill="B"/><circle cx="10.6" cy="6.8" r="1.2" fill="W" opacity=".55"/>',
+    'car': '<path d="M5.2 10.2l1.6-4c.4-1 1.3-1.6 2.3-1.6h5.8c1 0 1.9.6 2.3 1.6l1.6 4" fill="B"/><rect x="2.6" y="9.6" width="18.8" height="7.4" rx="2.4" fill="A"/><rect x="4.2" y="16" width="3.6" height="3.4" rx="1.1" fill="A"/><rect x="16.2" y="16" width="3.6" height="3.4" rx="1.1" fill="A"/><circle cx="6.6" cy="13.2" r="1.4" fill="W"/><circle cx="17.4" cy="13.2" r="1.4" fill="W"/><path d="M8 7.4h8l1 2.4H7z" fill="W" opacity=".5"/>',
+    'notifications': '<path d="M12 3a6 6 0 0 0-6 6v3.6l-1.6 2.6c-.4.7.1 1.6.9 1.6h13.4c.8 0 1.3-.9.9-1.6L18 12.6V9a6 6 0 0 0-6-6z" fill="A"/><path d="M9.5 18.6a2.6 2.6 0 0 0 5 0z" fill="B"/><circle cx="18" cy="5.5" r="2.6" fill="B" stroke="W" stroke-width="1.2"/><path d="M8.6 7.6a3.6 3.6 0 0 1 2.2-2" stroke="W" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".6"/>',
+    'gift': '<rect x="3.5" y="8.5" width="17" height="4" rx="1.2" fill="A"/><rect x="4.8" y="12.5" width="14.4" height="8" rx="1.4" fill="B"/><rect x="10.8" y="8.5" width="2.4" height="12" fill="W" opacity=".85"/><path d="M12 8.4c-1.3-3-5.2-4.1-5.6-1.8-.3 1.6 2.3 1.9 5.6 1.8zm0 0c1.3-3 5.2-4.1 5.6-1.8.3 1.6-2.3 1.9-5.6 1.8z" fill="A"/>',
+    'message': '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.2 3.6c-.5.4-1.2.1-1.2-.6V16A2.5 2.5 0 0 1 4 13.5z" fill="A"/><path d="M7.5 12.2V7.4l4.5 3.6 4.5-3.6v4.8" stroke="W" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" fill="none"/>',
+    'lock': '<path d="M7.5 10V7.6a4.5 4.5 0 0 1 9 0V10" stroke="B" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="4.5" y="9.6" width="15" height="11" rx="3" fill="A"/><circle cx="12" cy="14.4" r="1.7" fill="W"/><rect x="11.2" y="15" width="1.6" height="3" rx=".8" fill="W"/>',
+    'globe': '<circle cx="12" cy="12" r="9" fill="A"/><path d="M3.4 9.6c2.2.4 3 1.6 4.6 1.6 1.4 0 1.4 1.8 2.8 2.6 1 .6.6 2.4-.2 3.4-.7.9-.4 2.4.2 3.6A9 9 0 0 1 3.4 9.6zM14.6 3.4c-.6 1.2-.2 2.2 1 2.6 1.3.4 1.4 1.8 2.6 2.2 1 .3 1.9-.1 2.6-.6a9 9 0 0 0-6.2-4.2zM20.4 14.2c-1.2-.4-2.6.2-3.2 1.4-.6 1.1-1.8 1.6-1.6 3 .1.8.4 1.4.8 1.9a9 9 0 0 0 4-6.3z" fill="B"/><circle cx="9" cy="7" r="1.4" fill="W" opacity=".5"/>',
+    'theme': '<circle cx="12" cy="12" r="8.6" fill="B"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="A"/><circle cx="12" cy="12" r="3.4" fill="W"/><path d="M12 8.6a3.4 3.4 0 0 1 0 6.8z" fill="A"/>',
+    'refresh': '<path d="M19.5 12a7.5 7.5 0 0 1-13 5.1" stroke="A" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M4.5 12a7.5 7.5 0 0 1 13-5.1" stroke="B" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M18.6 3.2v4.6H14z" fill="B"/><path d="M5.4 20.8v-4.6H10z" fill="A"/>',
+    'cache': '<rect x="4" y="5.6" width="16" height="2.6" rx="1.3" fill="A"/><path d="M9.4 5.6V4.4c0-.8.6-1.4 1.4-1.4h2.4c.8 0 1.4.6 1.4 1.4v1.2" stroke="A" stroke-width="1.8" fill="none"/><path d="M5.6 9.2h12.8l-1 10.2c-.1 1-1 1.6-2 1.6H8.6c-1 0-1.9-.7-2-1.6z" fill="B"/><path d="M10 12v5.6M14 12v5.6" stroke="W" stroke-width="1.7" stroke-linecap="round"/>',
+    'doc': '<path d="M6.5 2.8h7.6l4.6 4.6V19a2.2 2.2 0 0 1-2.2 2.2H6.5A2.2 2.2 0 0 1 4.3 19V5a2.2 2.2 0 0 1 2.2-2.2z" fill="A"/><path d="M14.1 2.8v3.4c0 .7.5 1.2 1.2 1.2h3.4z" fill="B"/><path d="M8 11.2h8M8 14.4h8M8 17.6h5" stroke="W" stroke-width="1.6" stroke-linecap="round"/>',
+    'info': '<circle cx="12" cy="12" r="9" fill="A"/><circle cx="12" cy="7.6" r="1.5" fill="W"/><rect x="10.7" y="10.4" width="2.6" height="7.4" rx="1.3" fill="W"/><path d="M5.6 9a7 7 0 0 1 3.2-4" stroke="B" stroke-width="1.6" stroke-linecap="round" fill="none"/>',
+    'history': '<circle cx="12" cy="12.6" r="8.4" fill="A"/><path d="M12 8v5l3.2 2" stroke="W" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M3 5.6l3.2.4-.6 3" stroke="B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+  };
 
-  (List<Color>, String?) _style() {
+  (String, Color, Color) _style() {
     final t = AgI18n.orig(title).toLowerCase(); // AG_I18N1
-    if (t.contains('язык')) return (const [Color(0xFF38BDF8), Color(0xFF0284C7)], _globe);
-    if (t.contains('личн')) return (const [Color(0xFF60A5FA), Color(0xFF2563EB)], null);
-    if (t.contains('автомоб')) return (const [Color(0xFFFF9A3D), Color(0xFFF26200)], null);
-    if (t.contains('уведомл')) return (const [Color(0xFFF87171), Color(0xFFDC2626)], null);
-    if (t.contains('бонус')) return (const [Color(0xFFFBBF24), Color(0xFFF59E0B)], null);
-    if (t.contains('max')) return (const [Color(0xFF818CF8), Color(0xFF4F46E5)], _max);
-    if (t.contains('безопас')) return (const [Color(0xFF34D399), Color(0xFF059669)], null);
-    if (t.contains('оформл')) return (const [Color(0xFFA78BFA), Color(0xFF7C3AED)], null);
-    if (t.contains('обновл')) return (const [Color(0xFF22D3EE), Color(0xFF0891B2)], _refresh);
-    if (t.contains('кэш')) return (const [Color(0xFF94A3B8), Color(0xFF64748B)], null);
-    if (t.contains('документ')) return (const [Color(0xFF2DD4BF), Color(0xFF0D9488)], _doc);
-    if (t.contains('о прилож')) return (const [Color(0xFFFF9A3D), Color(0xFFF26200)], _info);
-    return (const [Color(0xFF9CA3AF), Color(0xFF6B7280)], null);
+    if (t.contains('язык')) return ('globe', const Color(0xFF0284C7), const Color(0xFF7DD3FC));
+    if (t.contains('личн')) return ('personal', const Color(0xFF2563EB), const Color(0xFF93C5FD));
+    if (t.contains('автомоб')) return ('car', const Color(0xFFF26200), const Color(0xFFFFB27A));
+    if (t.contains('уведомл')) return ('notifications', const Color(0xFFDC2626), const Color(0xFFFCA5A5));
+    if (t.contains('истори')) return ('history', const Color(0xFFDC2626), const Color(0xFFFCA5A5));
+    if (t.contains('бонус')) return ('gift', const Color(0xFFF59E0B), const Color(0xFFFCD34D));
+    if (t.contains('max')) return ('message', const Color(0xFF4F46E5), const Color(0xFFA5B4FC));
+    if (t.contains('безопас')) return ('lock', const Color(0xFF059669), const Color(0xFF6EE7B7));
+    if (t.contains('оформл')) return ('theme', const Color(0xFF7C3AED), const Color(0xFFC4B5FD));
+    if (t.contains('обновл')) return ('refresh', const Color(0xFF0891B2), const Color(0xFF67E8F9));
+    if (t.contains('кэш')) return ('cache', const Color(0xFF64748B), const Color(0xFFCBD5E1));
+    if (t.contains('документ')) return ('doc', const Color(0xFF0D9488), const Color(0xFF5EEAD4));
+    if (t.contains('о прилож')) return ('info', const Color(0xFFF26200), const Color(0xFFFFB27A));
+    return ('info', const Color(0xFF6B7280), const Color(0xFFD1D5DB));
   }
+
+  static String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
   @override
   Widget build(BuildContext context) {
-    final (colors, path) = _style();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (key, main, light) = _style();
+    final body = _svg[key]!
+        .replaceAll('"A"', '"${_hex(main)}"')
+        .replaceAll('"B"', '"${_hex(light)}"')
+        .replaceAll('"W"', '"#FFFFFF"');
     return Container(
       width: 42,
       height: 42,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(13),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
-        boxShadow: [BoxShadow(color: colors.last.withValues(alpha: .35), blurRadius: 10, offset: const Offset(0, 4))],
+        color: main.withValues(alpha: dark ? .22 : .12),
+        border: Border.all(color: main.withValues(alpha: dark ? .30 : .10)),
       ),
       alignment: Alignment.center,
-      child: path != null
-          ? AgIcon(path, size: 21, color: Colors.white, strokeWidth: 2)
-          : SvgPicture.asset(asset, width: 21, height: 21, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+      child: SvgPicture.string('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">$body</svg>', width: 24, height: 24),
     );
   }
 }
