@@ -229,6 +229,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden || // AG_CHATUI1: вкладка браузера скрыта — не отмечать прочитанным
         state == AppLifecycleState.detached) {
       _timer?.cancel();
       _timer = null;
@@ -835,34 +836,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ),
                     const SizedBox(width: 4),
                   ],
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFFF8A2B), Color(0xFFF05A00)],
-                      ),
-                      image:
-                          photoUrl.isNotEmpty
-                              ? DecorationImage(
-                                image: CachedNetworkImageProvider(photoUrl),
-                                fit: BoxFit.cover,
-                              )
-                              : null,
-                    ),
-                    child:
-                        photoUrl.isEmpty
-                            ? const Icon(
-                              Icons.support_agent_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            )
-                            : null,
-                  ),
+                  const _AgChatAvatar(size: 46), // AG_CHATUI1: логотип AG + «онлайн» + значок поддержки
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -3319,7 +3293,7 @@ class _MessageBubble extends StatelessWidget {
                                   color: Colors.white.withValues(alpha: 0.85),
                                 ),
                               )
-                            : Icon(Icons.done_rounded, size: 15, color: Colors.white.withValues(alpha: 0.85)),
+                            : Icon(Icons.done_all_rounded, size: 16, color: Colors.white.withValues(alpha: 0.9)), // AG_CHATUI1: доставлено
                       ],
                     ],
                   ),
@@ -3378,22 +3352,7 @@ class _MessageBubble extends StatelessWidget {
                 width: 32,
                 height: 32,
                 child: isLast
-                    ? Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFFFF9A4D), _M5.acc],
-                          ),
-                          image: av != null
-                              ? DecorationImage(image: CachedNetworkImageProvider(av), fit: BoxFit.cover)
-                              : null,
-                        ),
-                        child: av == null
-                            ? const Icon(Icons.support_agent_rounded, color: Colors.white, size: 18)
-                            : null,
-                      )
+                    ? const _AgChatAvatar(size: 32, badge: false)
                     : null,
               ),
               const SizedBox(width: 8),
@@ -3681,21 +3640,73 @@ class _M5ScannerPageState extends State<_M5ScannerPage> {
 }
 
 /// AG_M5CHAT2: обои чата (тот же рисунок, что у сотрудников).
-class _M5Wallpaper extends StatelessWidget {
+class _M5Wallpaper extends StatelessWidget { // AG_CHATUI1: спокойный фон без рисунков
   @override
   Widget build(BuildContext context) {
     final dark = _M5.dark(context);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ColoredBox(color: dark ? const Color(0xFF15161A) : const Color(0xFFF1F4F9)),
-        Image.asset(
-          'assets/icons/chat/m5_bg.jpg',
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    return CustomPaint(
+      painter: _AgDotsPainter(dark ? const Color(0xFF15171B) : const Color(0xFFF4F5F7), dark ? const Color(0x14FFFFFF) : const Color(0x0F1F2937)),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _AgDotsPainter extends CustomPainter {
+  _AgDotsPainter(this.bg, this.dot);
+  final Color bg, dot;
+  @override
+  void paint(Canvas c, Size s) {
+    c.drawRect(Offset.zero & s, Paint()..color = bg);
+    final p = Paint()..color = dot;
+    for (double y = 10; y < s.height; y += 22) {
+      for (double x = (y ~/ 22).isEven ? 10 : 21; x < s.width; x += 22) {
+        c.drawCircle(Offset(x, y), 1.1, p);
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _AgDotsPainter o) => o.bg != bg || o.dot != dot;
+}
+
+class _AgChatAvatar extends StatelessWidget {
+  const _AgChatAvatar({required this.size, this.badge = true});
+  final double size;
+  final bool badge;
+  @override
+  Widget build(BuildContext context) {
+    final ring = _M5.dark(context) ? const Color(0xFF15171B) : Colors.white;
+    return SizedBox(
+      width: size, height: size,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Container(
+          width: size, height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: ring, width: 2),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: ClipOval(child: Image.asset('assets/logo.png', fit: BoxFit.cover, filterQuality: FilterQuality.high)),
         ),
-        if (dark) const ColoredBox(color: Color(0xCC15161A)),
-      ],
+        if (badge) ...[
+          // значок «поддержка» справа снизу
+          Positioned(
+            right: -3, bottom: -3,
+            child: Container(
+              width: size * .42, height: size * .42,
+              decoration: BoxDecoration(color: const Color(0xFF1F2937), shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
+              child: Icon(Icons.headset_mic_rounded, size: size * .24, color: Colors.white),
+            ),
+          ),
+          // «онлайн»
+          Positioned(
+            right: 0, top: 0,
+            child: Container(
+              width: size * .26, height: size * .26,
+              decoration: BoxDecoration(color: const Color(0xFF22C55E), shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
+            ),
+          ),
+        ],
+      ]),
     );
   }
 }
