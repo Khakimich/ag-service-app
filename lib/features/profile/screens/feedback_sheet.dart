@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -9,6 +10,17 @@ import '../../../core/i18n.dart';
 import '../../auth/providers/auth_provider.dart';
 
 const _orange = Color(0xFFF26200);
+
+// AG_FEEDBACK2: SVG-иконки (шрифт Material Icons в веб-версии не всегда загружается)
+const _ic = {
+  'bug': '<path d="M9 9a3 3 0 0 1 6 0"/><rect x="7.5" y="9" width="9" height="11" rx="4.5"/><path d="M12 12v8M4 13h3.5M16.5 13H20M5 8.5l2.8 2M19 8.5l-2.8 2M5 19l2.8-2M19 19l-2.8-2M10 6.2 8.8 4.5M14 6.2l1.2-1.7"/>',
+  'idea': '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>',
+  'mail': '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
+  'note': '<path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 8.5l3 3"/>',
+};
+Widget _svgIc(String k, Color c, [double size = 20]) => SvgPicture.string(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_ic[k]}</svg>',
+    width: size, height: size);
 
 Future<void> showFeedbackSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -77,14 +89,14 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    InputDecoration deco(String hint, IconData icon) => InputDecoration(
+    InputDecoration deco(String hint, String icon) => InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, size: 20),
+          prefixIcon: Padding(padding: const EdgeInsets.all(13), child: _svgIc(icon, cs.onSurfaceVariant)),
           filled: true,
           fillColor: cs.surfaceContainerHighest.withValues(alpha: .5),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         );
-    Widget chip(String k, String label, IconData icon) {
+    Widget chip(String k, String label, String icon) {
       final on = _kind == k;
       return Expanded(
         child: GestureDetector(
@@ -98,7 +110,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               border: Border.all(color: on ? _orange : Colors.transparent, width: 1.5),
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 18, color: on ? _orange : cs.onSurfaceVariant),
+              _svgIc(icon, on ? _orange : cs.onSurfaceVariant, 19),
               const SizedBox(width: 6),
               Text(label, style: TextStyle(fontWeight: FontWeight.w800, color: on ? _orange : cs.onSurface)),
             ]),
@@ -117,16 +129,16 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
         Text(tr('Напишите нам — сообщение сразу получит команда AG Service.'), style: TextStyle(color: cs.onSurfaceVariant)),
         const SizedBox(height: 16),
         Row(children: [
-          chip('bug', tr('Ошибка'), Icons.bug_report_outlined),
+          chip('bug', tr('Ошибка'), 'bug'),
           const SizedBox(width: 10),
-          chip('idea', tr('Предложение'), Icons.lightbulb_outline_rounded),
+          chip('idea', tr('Предложение'), 'idea'),
         ]),
         const SizedBox(height: 12),
-        TextField(controller: _email, keyboardType: TextInputType.emailAddress, style: const TextStyle(fontSize: 16), decoration: deco(tr('Ваша почта'), Icons.alternate_email_rounded)),
+        TextField(controller: _email, keyboardType: TextInputType.emailAddress, style: const TextStyle(fontSize: 16), decoration: deco(tr('Ваша почта'), 'mail')),
         const SizedBox(height: 10),
         TextField(
           controller: _text, minLines: 4, maxLines: 8, maxLength: 2000, style: const TextStyle(fontSize: 16),
-          decoration: deco(_kind == 'bug' ? tr('Что случилось? На каком экране и что вы нажимали?') : tr('Что бы вы хотели улучшить или добавить?'), Icons.edit_note_rounded),
+          decoration: deco(_kind == 'bug' ? tr('Что случилось? На каком экране и что вы нажимали?') : tr('Что бы вы хотели улучшить или добавить?'), 'note'),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w700))),
         SizedBox(
