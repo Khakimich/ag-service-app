@@ -108,18 +108,23 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
     return false;
   }
 
-  Widget _arrow(IconData icon, bool enabled, VoidCallback onTap) {
+  // AG_SVCHUB9: стрелки SVG (шрифт иконок в веб-версии не всегда грузится)
+  static Widget _chev(bool right, Color c, double size) => SvgPicture.string(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${right ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'}"/></svg>',
+      width: size, height: size);
+
+  Widget _arrow(bool right, bool enabled, VoidCallback onTap) {
     final cs = Theme.of(context).colorScheme;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 200),
       opacity: enabled ? 1 : .35,
       child: Material(
-        color: enabled ? const Color(0xFFFF6A00) : cs.surfaceContainerHighest,
+        color: enabled ? const Color(0xFFFF6A00) : cs.onSurface.withValues(alpha: .08),
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: enabled ? onTap : null,
-          child: SizedBox(width: 36, height: 36, child: Icon(icon, size: 22, color: enabled ? Colors.white : cs.onSurfaceVariant)),
+          child: SizedBox(width: 36, height: 36, child: Center(child: _chev(right, enabled ? Colors.white : cs.onSurfaceVariant, 20))),
         ),
       ),
     );
@@ -143,9 +148,9 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Expanded(child: Text(tr('Сервисы'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4))),
-        _arrow(Icons.chevron_left_rounded, _atStart == false, () => _go(-1)),
+        _arrow(false, _atStart == false, () => _go(-1)),
         const SizedBox(width: 8),
-        _arrow(Icons.chevron_right_rounded, _atEnd == false, () => _go(1)),
+        _arrow(true, _atEnd == false, () => _go(1)),
       ]),
       const SizedBox(height: 12),
       SizedBox(
@@ -184,7 +189,7 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
                           shape: BoxShape.circle,
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 12, offset: const Offset(0, 4))],
                         ),
-                        child: const Icon(Icons.chevron_right_rounded, color: Color(0xFFFF6A00), size: 28),
+                        child: Center(child: _chev(true, const Color(0xFFFF6A00), 24)),
                       ),
                     ),
                   ),
