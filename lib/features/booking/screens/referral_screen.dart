@@ -222,17 +222,35 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container( // AG_REFRED1: главное правило крупно и красным
+                Container( // AG_REFRED2: новые правила с 14 ноября
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFEBEE),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD32F2F), width: 2),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: const Color(0xFFD32F2F).withValues(alpha: .35), blurRadius: 18, offset: const Offset(0, 8))],
                   ),
-                  child: Text(
-                    trf('Другу — {0} ₽ сразу после регистрации.\nВам — {1} ₽, когда друг приедет в сервис и пройдёт любую услугу.', [summary.friendReward, summary.referrerFirstVisitReward]),
-                    style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 20, fontWeight: FontWeight.w900, height: 1.3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.campaign_rounded, size: 18, color: Color(0xFFD32F2F)),
+                          const SizedBox(width: 6),
+                          Text(tr('НОВЫЕ ПРАВИЛА С 14 НОЯБРЯ'), style: const TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: .4)),
+                        ]),
+                      ),
+                      const SizedBox(height: 14),
+                      _AgRefRedRow(icon: Icons.person_add_alt_1_rounded, amount: summary.friendReward, text: tr('Другу — сразу после регистрации по вашей ссылке')),
+                      const SizedBox(height: 12),
+                      _AgRefRedRow(icon: Icons.car_repair_rounded, amount: summary.referrerFirstVisitReward, text: tr('Вам — когда друг приедет в сервис и пройдёт любую услугу')),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -439,5 +457,27 @@ class _RuleTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+
+class _AgRefRedRow extends StatelessWidget { // AG_REFRED2
+  const _AgRefRedRow({required this.icon, required this.amount, required this.text});
+  final IconData icon;
+  final num amount;
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Container(
+        width: 46, height: 46,
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18), borderRadius: BorderRadius.circular(14)),
+        child: Icon(icon, color: Colors.white, size: 26),
+      ),
+      const SizedBox(width: 12),
+      Text('+${amount.toStringAsFixed(0)} ₽', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+      const SizedBox(width: 12),
+      Expanded(child: Text(text, style: TextStyle(color: Colors.white.withValues(alpha: .95), fontSize: 15, fontWeight: FontWeight.w700, height: 1.25))),
+    ]);
   }
 }
