@@ -12,6 +12,8 @@ class NotificationsRepository {
     final raw = data['notifications'] as List<dynamic>;
     return raw
         .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
+        // AG_NOTIF2: сообщения чата живут во вкладке «Чаты», в уведомления не попадают
+        .where((n) => n.type.contains('chat') == false && n.type.contains('message') == false)
         .toList(growable: false);
   }
 
