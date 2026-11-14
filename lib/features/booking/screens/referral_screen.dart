@@ -254,23 +254,6 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _RuleTile(
-                  icon: Icons.person_add_alt_1_rounded,
-                  title: tr('Друг регистрируется по ссылке'),
-                  description: trf('Другу сразу начисляется {0} ₽ на бонусный счёт.', [summary.friendReward]),
-                ),
-                if (summary.referrerSignupReward > 0)
-                  _RuleTile(
-                    icon: Icons.celebration_rounded,
-                    title: tr('Приглашение принято'),
-                    description: trf('Вам — {0} ₽, когда друг зарегистрируется.', [summary.referrerSignupReward]),
-                  ),
-                _RuleTile(
-                  icon: Icons.check_circle_outline_rounded,
-                  title: tr('Первый ремонт друга'),
-                  description: trf('Вам — {0} ₽ на бонусный счёт, когда друг впервые обслужится в сервисе.', [summary.referrerFirstVisitReward]),
-                ),
-                const SizedBox(height: 12),
                 OutlinedButton.icon( // AG_REFLVL1
                   onPressed: () => showAgLevelsSheet(context, invited: summary.referrals.length, rewardPerFriend: summary.referrerTotal),
                   icon: const Icon(Icons.workspace_premium_rounded, color: BrandColors.orange),
