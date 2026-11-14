@@ -48,7 +48,8 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          # ключ можно вставить как есть или одной строкой base64; лишние \r убираются
+          if printf '%s' "$SSH_KEY" | grep -q 'BEGIN'; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy; else printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_deploy; fi
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
 
