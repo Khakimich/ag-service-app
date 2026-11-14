@@ -642,7 +642,7 @@ class _BottomBar extends StatelessWidget {
               height: 49,
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: BrandColors.orange.withValues(alpha: .08),
+                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF3F4F6) : BrandColors.orange.withValues(alpha: .08), // AG_LOGODARK1
                 borderRadius: BorderRadius.circular(14),
               ),
               child: _CarBrandLogo(title: car!.title, size: 38),

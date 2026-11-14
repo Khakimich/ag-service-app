@@ -1859,7 +1859,8 @@ class _HomeScreenState extends State<HomeScreen>
                 height: MediaQuery.sizeOf(context).width < 600 ? 66.0 : 82.0,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: _orangeSoft,
+                  // AG_LOGODARK1: в тёмной теме логотип на светлой плашке, иначе тёмные буквы не видно
+                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF3F4F6) : _orangeSoft,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: _carBrandLogo(

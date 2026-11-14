@@ -424,7 +424,7 @@ class _CarCard extends StatelessWidget {
               height: 88,
               padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: BrandColors.orange.withValues(alpha: isDark ? .12 : .09),
+                color: isDark ? const Color(0xFFF3F4F6) : BrandColors.orange.withValues(alpha: .09), // AG_LOGODARK1
                 borderRadius: BorderRadius.circular(22),
               ),
               child: Center(child: _brandLogo(context)),
