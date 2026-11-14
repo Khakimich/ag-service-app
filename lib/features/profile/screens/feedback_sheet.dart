@@ -15,6 +15,7 @@ Future<void> showFeedbackSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    useRootNavigator: true, // поверх нижнего меню, кнопка не перекрывается
     backgroundColor: Theme.of(context).colorScheme.surface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: (_) => const _FeedbackSheet(),
@@ -107,7 +108,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     }
 
     return Padding(
-      padding: EdgeInsets.only(left: 20, right: 20, top: 12, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.only(left: 20, right: 20, top: 12, bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)))),
         const SizedBox(height: 16),
