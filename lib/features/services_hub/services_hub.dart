@@ -150,14 +150,18 @@ class _HubCardState extends State<_HubCard> {
                   gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.colors),
                 ),
                 child: Stack(children: [
-                  Positioned(right: -26, top: -30, child: _circle(120, .14)),
-                  Positioned(right: 54, bottom: -40, child: _circle(90, .10)),
-                  Positioned(left: -20, bottom: -26, child: _circle(70, .08)),
-                  Positioned(
-                    right: 18,
-                    top: 0,
-                    bottom: 0,
-                    child: Center(child: _svg(_Ico.glyph(item.icon), 74)),
+                  // AG_SVCHUB6: реальное фото с сервера; если его нет — прежняя иллюстрация
+                  Positioned.fill(
+                    child: Image.network(
+                      'https://job.autogrom.ru/svc_img/hub/${item.icon}.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Stack(children: [
+                        Positioned(right: -26, top: -30, child: _circle(120, .14)),
+                        Positioned(right: 54, bottom: -40, child: _circle(90, .10)),
+                        Positioned(left: -20, bottom: -26, child: _circle(70, .08)),
+                        Positioned(right: 18, top: 0, bottom: 0, child: Center(child: _svg(_Ico.glyph(item.icon), 74))),
+                      ]),
+                    ),
                   ),
                   Positioned(
                     left: 14,
