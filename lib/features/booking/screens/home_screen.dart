@@ -1,3 +1,4 @@
+import '../providers/booking_flow_provider.dart'; // AG_QUICKBOOK1
 import 'package:mobile/core/promo_splash.dart'; // AG_PROMO1
 import '../../../core/update_checker.dart'; // AG_UPD1
 import 'package:mobile/features/booking/widgets/news_strip.dart'; // AG_FIX1
@@ -1024,7 +1025,8 @@ class _HomeScreenState extends State<HomeScreen>
               return;
             }
 
-            context.push('/services');
+            context.read<BookingFlowProvider>().reset();
+            context.push('/booking/start'); // AG_QUICKBOOK1: сначала дата и время
           },
           child: Container(
             height: 66,

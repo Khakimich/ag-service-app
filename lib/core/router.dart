@@ -1,3 +1,4 @@
+import '../features/booking/screens/quick_booking_screen.dart'; // AG_QUICKBOOK1
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/providers/auth_provider.dart';
@@ -44,6 +45,7 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
     final path = state.uri.path;
 
     final requiresAuth =
+        path == '/booking/start' ||
         path == '/booking/specialist' ||
         path == '/booking/datetime' ||
         path == '/booking/car' ||
@@ -157,6 +159,10 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
             conversationId: state.pathParameters['id']!,
             conversation: state.extra is ChatConversation ? state.extra as ChatConversation : null, // AG_FIX3
           ),
+    ),
+    GoRoute(
+      path: '/booking/start', // AG_QUICKBOOK1
+      builder: (_, __) => const QuickBookingScreen(),
     ),
     GoRoute(
       path: '/booking/specialist',
