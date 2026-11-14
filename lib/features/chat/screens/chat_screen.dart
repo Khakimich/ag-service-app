@@ -3688,20 +3688,11 @@ class _AgChatAvatar extends StatelessWidget {
           child: ClipOval(child: Image.asset('assets/logo.png', fit: BoxFit.cover, filterQuality: FilterQuality.high)),
         ),
         if (badge) ...[
-          // значок «поддержка» справа снизу
-          Positioned(
-            right: -3, bottom: -3,
-            child: Container(
-              width: size * .42, height: size * .42,
-              decoration: BoxDecoration(color: const Color(0xFF1F2937), shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
-              child: Icon(Icons.headset_mic_rounded, size: size * .24, color: Colors.white),
-            ),
-          ),
           // «онлайн»
           Positioned(
-            right: 0, top: 0,
+            right: 0, bottom: 0,
             child: Container(
-              width: size * .26, height: size * .26,
+              width: size * .28, height: size * .28,
               decoration: BoxDecoration(color: const Color(0xFF22C55E), shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
             ),
           ),
