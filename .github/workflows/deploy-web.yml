@@ -62,4 +62,4 @@ jobs:
         run: |
           SSH="ssh -i ~/.ssh/id_deploy -p $SSH_PORT"
           $SSH "$SSH_USER@$SSH_HOST" "mkdir -p '$WEB_DIR' && cp -a '$WEB_DIR' '${WEB_DIR}.bak_$(date +%Y%m%d_%H%M)' && ls -dt '${WEB_DIR}'.bak_* | tail -n +6 | xargs -r rm -rf"
-          rsync -az --delete --exclude '.htaccess' --exclude '.well-known/' --exclude '*.php' -e "$SSH" build/web/ "$SSH_USER@$SSH_HOST:$WEB_DIR/"
+          rsync -az --delete --exclude 'download/' --exclude '.htaccess' --exclude '.well-known/' --exclude '*.php' -e "$SSH" build/web/ "$SSH_USER@$SSH_HOST:$WEB_DIR/"
