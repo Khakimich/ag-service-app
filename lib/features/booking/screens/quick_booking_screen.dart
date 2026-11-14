@@ -56,15 +56,16 @@ class _QuickBookingScreenState extends State<QuickBookingScreen> {
   Future<void> _loadDay() async {
     setState(() { _loading = true; _error = null; _time = null; _free = {}; });
     final repo = context.read<BookingRepository>();
-    final now = DateTime.now().add(const Duration(minutes: 30));
+    final now = DateTime.now().toUtc().add(const Duration(minutes: 30));
     final result = <String, List<(Specialist, Slot)>>{};
     await Future.wait(_specialists.map((s) async {
       try {
         final slots = await repo.slots(specialistId: s.id, date: _date, durationMinutes: 30);
         for (final sl in slots) {
-          final t = DateTime(_date.year, _date.month, _date.day, sl.start.hour, sl.start.minute);
-          if (t.isBefore(now)) continue;
-          final key = '${sl.start.hour.toString().padLeft(2, '0')}:${sl.start.minute.toString().padLeft(2, '0')}';
+          if (sl.start.toUtc().isBefore(now)) continue;
+          // AG_QUICKBOOK2: время по Екатеринбургу (как в подписи слота), а не UTC
+          final m = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(sl.label);
+          final key = m != null ? '${m.group(1)!.padLeft(2, '0')}:${m.group(2)}' : sl.label;
           (result[key] ??= []).add((s, sl));
         }
       } catch (_) {}
@@ -91,7 +92,7 @@ class _QuickBookingScreenState extends State<QuickBookingScreen> {
     try {
       final slots = await repo.slots(specialistId: _master!.id, date: _date, durationMinutes: s.durationMinutes);
       for (final sl in slots) {
-        if (sl.start.hour == _slot!.start.hour && sl.start.minute == _slot!.start.minute) { fit = sl; break; }
+        if (sl.start.toUtc() == _slot!.start.toUtc()) { fit = sl; break; }
       }
     } catch (_) {}
     if (mounted == false) return;
