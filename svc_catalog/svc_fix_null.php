@@ -40,7 +40,18 @@ $local = [];
 foreach ($db->query("SELECT booking_id, title FROM ag_mb_booking_services ORDER BY pos DESC")->fetchAll(PDO::FETCH_ASSOC) as $r) $local[$r['booking_id']] = $r['title'];
 $bk = json_decode(@file_get_contents('/root/svc_backup_20261114_062549.json'), true) ?: [];
 [$code, $d] = req('GET', 'services-admin'); $new = $d['services'] ?? [];
-function best($title, $new) { $b = null; $bs = -1; foreach ($new as $n) { similar_text(norm($title), norm($n['title']), $p); if ($p > $bs) { $bs = $p; $b = $n; } } return [$b, round($bs)]; }
+function words($t) { return array_values(array_filter(preg_split('/\s+/u', norm($t)), fn($w) => mb_strlen($w) > 2)); }
+function best($title, $new) {
+  global $MAP; $k = mb_strtolower(trim($title));
+  if (isset($MAP[$k])) foreach ($new as $n) if (mb_strtolower($n['title']) === mb_strtolower($MAP[$k])) return [$n, 100];
+  $a = words($title); $b = null; $bs = -1;
+  foreach ($new as $n) { $w = words($n['title']); $hit = 0;
+    foreach ($a as $x) foreach ($w as $y) if (mb_substr($x, 0, 5) === mb_substr($y, 0, 5)) { $hit++; break; }
+    $p = count($a) ? 100 * $hit / count($a) - 0.1 * count($w) : 0;
+    if ($p > $bs) { $bs = $p; $b = $n; } }
+  return [$b, round($bs)];
+}
+$MAP = json_decode(@file_get_contents(__DIR__ . '/svc_fix_map.json'), true) ?: [];
 [$c2, $sp] = req('GET', 'specialists-admin'); $specs = $sp['specialists'] ?? [];
 $paths = []; $from = strtotime('2026-01-01'); $to = strtotime('+180 days');
 foreach ($specs as $m) for ($t = $from; $t <= $to; $t += 86400) $paths[$m['id'] . date('Ymd', $t)] = 'bookings?specialist_id=' . $m['id'] . '&date=' . date('Y-m-d', $t);
@@ -54,8 +65,10 @@ foreach ($lost as $b) {
   if ($old === null) { $unk++; echo "  ? " . substr($b['scheduled_at'],0,16) . " " . $b['customer_name'] . " [" . $b['status'] . "] — старое название неизвестно\n"; continue; }
   [$n, $p] = best($old, $new);
   $plan[] = [$b, $n];
-  echo "  " . substr($b['scheduled_at'],0,16) . " " . $b['customer_name'] . " [" . $b['status'] . "]: «$old» → «" . $n['title'] . "» ($p%)\n";
+  echo "  " . substr($b['scheduled_at'],0,16) . " " . $b['customer_name'] . " [" . $b['status'] . "]: «{$old}» → «" . $n['title'] . "» ($p%)\n";
 }
+$cnt = []; foreach ($plan as [$b, $n]) { $o = $local[$b['id']]; $cnt[$o . ' → ' . $n['title']] = ($cnt[$o . ' → ' . $n['title']] ?? 0) + 1; }
+arsort($cnt); echo "\n=== СВОДКА: старая услуга → новая (записей) ===\n"; foreach ($cnt as $k => $v) echo "  [$v] $k\n";
 if ($apply === false) { echo "\nПробный режим. Для привязки: php svc_fix_null.php --apply\n"; return; }
 $ok = 0;
 foreach ($plan as [$b, $n]) { [$c, , $raw] = req('PATCH', 'bookings/' . $b['id'], ['service_id' => $n['id']]); if ($c < 300) $ok++; else echo "  не удалось " . $b['id'] . " ($c): " . substr($raw, 0, 90) . "\n"; }
