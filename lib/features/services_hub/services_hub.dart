@@ -64,8 +64,66 @@ Widget _svg(String s, double size) => SvgPicture.string(s, width: size, height: 
 
 // ───────────────────────── Раздел на главной ─────────────────────────
 // AG_SVCHUB5: горизонтальные карточки — сверху цветная иллюстрация, снизу заголовок и описание.
-class ServicesHubSection extends StatelessWidget {
+class ServicesHubSection extends StatefulWidget {
   const ServicesHubSection({super.key});
+  @override
+  State<ServicesHubSection> createState() => _ServicesHubSectionState();
+}
+
+// AG_SVCHUB8: плавный слайдер с доводкой к карточке + стрелки, чтобы было понятно, что листается
+class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTickerProviderStateMixin {
+  static const double _step = 236 + 12;
+  final _ctl = ScrollController();
+  late final AnimationController _nudge = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+  bool _atStart = true, _atEnd = false, _snapping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl.addListener(() {
+      if (_ctl.hasClients == false) return;
+      final s = _ctl.offset <= 4, e = _ctl.offset >= _ctl.position.maxScrollExtent - 4;
+      if (s != _atStart || e != _atEnd) setState(() { _atStart = s; _atEnd = e; });
+    });
+  }
+
+  @override
+  void dispose() { _ctl.dispose(); _nudge.dispose(); super.dispose(); }
+
+  void _go(int dir) {
+    if (_ctl.hasClients == false) return;
+    final target = ((_ctl.offset / _step).round() + dir) * _step;
+    _ctl.animateTo(target.clamp(0.0, _ctl.position.maxScrollExtent), duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
+  }
+
+  bool _onEnd(ScrollEndNotification n) {
+    if (_snapping || _ctl.hasClients == false) return false;
+    final max = _ctl.position.maxScrollExtent;
+    final target = (_ctl.offset / _step).round() * _step;
+    final t = _ctl.offset >= max - 4 ? max : target.clamp(0.0, max);
+    if ((t - _ctl.offset).abs() > 1) {
+      _snapping = true;
+      Future.microtask(() => _ctl.animateTo(t, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic).whenComplete(() => _snapping = false));
+    }
+    return false;
+  }
+
+  Widget _arrow(IconData icon, bool enabled, VoidCallback onTap) {
+    final cs = Theme.of(context).colorScheme;
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: enabled ? 1 : .35,
+      child: Material(
+        color: enabled ? const Color(0xFFFF6A00) : cs.surfaceContainerHighest,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: enabled ? onTap : null,
+          child: SizedBox(width: 36, height: 36, child: Icon(icon, size: 22, color: enabled ? Colors.white : cs.onSurfaceVariant)),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,17 +141,58 @@ class ServicesHubSection extends StatelessWidget {
           () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Аренда автомобилей скоро появится')))), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(tr('Сервисы'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4)),
+      Row(children: [
+        Expanded(child: Text(tr('Сервисы'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -.4))),
+        _arrow(Icons.chevron_left_rounded, _atStart == false, () => _go(-1)),
+        const SizedBox(width: 8),
+        _arrow(Icons.chevron_right_rounded, _atEnd == false, () => _go(1)),
+      ]),
       const SizedBox(height: 12),
       SizedBox(
         height: 214,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.none,
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (_, i) => _HubCard(item: items[i]),
-        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          NotificationListener<ScrollEndNotification>(
+            onNotification: _onEnd,
+            child: ListView.separated(
+              controller: _ctl,
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, i) => _HubCard(item: items[i]),
+            ),
+          ),
+          // подсказка «листай»: пульсирующая стрелка у правого края, пока не долистали
+          Positioned(
+            right: 4, top: 0, bottom: 0,
+            child: IgnorePointer(
+              ignoring: _atEnd,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                opacity: _atEnd ? 0 : 1,
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _nudge,
+                    builder: (_, child) => Transform.translate(offset: Offset(-6 * _nudge.value, 0), child: child),
+                    child: GestureDetector(
+                      onTap: () => _go(1),
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 12, offset: const Offset(0, 4))],
+                        ),
+                        child: const Icon(Icons.chevron_right_rounded, color: Color(0xFFFF6A00), size: 28),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
       ),
     ]);
   }
