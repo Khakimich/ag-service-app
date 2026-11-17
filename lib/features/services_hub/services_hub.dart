@@ -37,8 +37,9 @@ class _Ico {
       '<circle cx="6.85" cy="19.2" r="1.9"/><circle cx="17.25" cy="19.2" r="1.9"/>';
   static const _osago =
       '<path d="M12 1.8 20 5v6.2c0 5-3.4 9.5-8 10.9-4.6-1.4-8-5.9-8-10.9V5zm3.9 7.3-5.1 5.2-2.4-2.4-1.4 1.4 3.8 3.8 6.5-6.6z"/>';
+  static const _key = '<path fill-rule="evenodd" d="M15 2a7 7 0 1 1-2.6 13.5L11 17H9v2H7v2H3v-3.6l7-7A7 7 0 0 1 15 2zm2 4a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 17 6z"/>'; // AG_RENT1
   static String glyph(String key, [String color = '#FFFFFF']) =>
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="$color">${switch (key) { 'taxi' => _taxi, 'tow' => _tow, 'bodycam' => _body, 'rent' => _taxi, _ => _osago }}</svg>';
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="$color">${switch (key) { 'taxi' => _taxi, 'tow' => _tow, 'bodycam' => _body, 'rent' => _key, _ => _osago }}</svg>';
   static String _l(String c, String p, [double w = 2]) =>
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="$c" stroke-width="$w" stroke-linecap="round" stroke-linejoin="round">$p</svg>';
   static String pin([String c = '#FF6A00']) => _l(c, '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
@@ -141,9 +142,8 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
           const [Color(0xFF4F8BFF), Color(0xFF1F54D6)], tr('по фото'), () => context.push('/body-repair')),
       _HubItem('shield', tr('ОСАГО'), tr('по самой выгодной цене для такси'),
           const [Color(0xFF34D399), Color(0xFF059669)], tr('скоро'), () => _soon(context), soon: true),
-      _HubItem('rent', tr('Аренда авто'), tr('машины в аренду для работы и поездок — скоро'), // AG_SVCHUB7
-          const [Color(0xFF94A3B8), Color(0xFF475569)], tr('скоро'),
-          () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Аренда автомобилей скоро появится')))), soon: true),
+      _HubItem('rent', tr('AG Гараж'), tr('аренда авто для работы в такси и поездок'), // AG_RENT1
+          const [Color(0xFF3F3F46), Color(0xFF18181B)], tr('аренда'), () => context.push('/garage')),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
