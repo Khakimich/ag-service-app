@@ -1,0 +1,41 @@
+# AG_RENT2: пункт «AG Гараж» в главном меню job (запуск вручную).
+# Копирует новые файлы и добавляет пункт меню; перед изменением делает копии файлов.
+name: Deploy job — AG Garage menu
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH-ключ
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q 'BEGIN'; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy; else printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_deploy; fi
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Выкладка
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy -p $SSH_PORT $SSH_USER@$SSH_HOST"
+          # папка job на сервере
+          J=$($SSH 'for d in /home/khakimjon/web/job.autogrom.ru/public_html /var/www/job.autogrom.ru; do [ -f "$d/ag_service/_layout.php" ] && echo "$d" && exit 0; done; dirname "$(dirname "$(find /home /var/www -maxdepth 6 -path "*job.autogrom.ru*/ag_service/_layout.php" 2>/dev/null | head -1)")"')
+          echo "job: $J"
+          [ -n "$J" ] && $SSH "test -f '$J/ag_service/_layout.php'" || { echo "Папка job не найдена"; exit 1; }
+          B="/root/ag_backups/job_menu_$(date +%Y%m%d_%H%M%S)"
+          $SSH "mkdir -p '$B' && cp -a '$J/employee.php' '$J/app-header.js' '$B/' && echo backup: $B"
+          scp -i ~/.ssh/id_deploy -P "$SSH_PORT" deploy/job_rent/patch_menu.py "$SSH_USER@$SSH_HOST:/tmp/ag_rent_patch_menu.py"
+          $SSH "python3 /tmp/ag_rent_patch_menu.py '$J' && php -l '$J/employee.php' || { cp -a '$B/employee.php' '$B/app-header.js' '$J/'; echo RESTORED; exit 1; }; rm -f /tmp/ag_rent_patch_menu.py"
+          $SSH "grep -n 'AG_RENT2' '$J/employee.php' '$J/app-header.js' | cut -c1-160"
