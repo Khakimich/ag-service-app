@@ -1,0 +1,31 @@
+# AG_RENT1: проверка меню «AG Гараж» в job (только чтение)
+name: Job — AG Garage check
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: SSH-ключ
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          if printf '%s' "$SSH_KEY" | grep -q 'BEGIN'; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy; else printf '%s' "$SSH_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_deploy; fi
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+      - name: Проверка
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          SSH="ssh -i ~/.ssh/id_deploy -p $SSH_PORT $SSH_USER@$SSH_HOST"
+          $SSH 'J=/home/khakimjon/web/job.autogrom.ru/public_html; cd $J/ag_service;
+            echo "== grep"; grep -n "AG_RENT1\|employeeId === 2\|news.php\|<nav\|</nav>\|ag-nav\b" _layout.php | head -40;
+            echo "== context"; n=$(grep -n AG_RENT1 _layout.php | head -1 | cut -d: -f1); sed -n "$((n-15)),$((n+12))p" _layout.php;
+            echo "== files"; ls -la rent.php _layout.php; ls $J/ag_service/*.js | head -40;
+            echo "== nav js"; grep -ln "news.php\|referrals.php" $J/ag_service/*.js $J/*.js 2>/dev/null'
