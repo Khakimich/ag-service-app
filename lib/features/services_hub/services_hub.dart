@@ -238,7 +238,7 @@ class _HubCardState extends State<_HubCard> {
                   // AG_SVCHUB6: реальное фото с сервера; если его нет — прежняя иллюстрация
                   Positioned.fill(
                     child: Image.network(
-                      'https://job.autogrom.ru/svc_img/hub/${item.icon}.jpg?v=20261118c', // AG_SVCHUB7: версия — сбрасывает кэш старых картинок
+                      'https://job.autogrom.ru/svc_img/hub/${item.icon}.jpg?v=20261118d', // AG_SVCHUB7: версия — сбрасывает кэш старых картинок
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Stack(children: [
                         Positioned(right: -26, top: -30, child: _circle(120, .14)),
