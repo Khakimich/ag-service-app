@@ -2022,6 +2022,7 @@ class _HomeScreenState extends State<HomeScreen>
   static List<_ServiceBanner> get _serviceBanners => <_ServiceBanner>[
     _ServiceBanner(
       title: tr('Замена масла'),
+      img: 'oil', // AG_POP1
       caption: tr('Масло и фильтр'),
       icon: AgIcons.oil,
       color: Color(0xFFFF6A00),
@@ -2037,23 +2038,25 @@ class _HomeScreenState extends State<HomeScreen>
           tr('Обычно каждые 7–10 тыс. км или раз в год. Точный интервал зависит от автомобиля.'),
     ),
     _ServiceBanner(
-      title: tr('Развал-схождение'),
-      caption: tr('Углы колёс'),
-      icon: AgIcons.steering,
+      title: tr('Техническое обслуживание'),
+      caption: tr('Плановое ТО'),
+      icon: AgIcons.wrench,
       color: Color(0xFF2F7BFF),
+      img: 'to',
       about:
-          tr('Правильные углы установки колёс дают ровный ход, точный руль и равномерный износ шин.'),
+          tr('Плановое ТО по регламенту производителя: меняем расходники и проверяем узлы, чтобы автомобиль не подвёл в дороге.'),
       includes: [
-        tr('Проверка подвески перед регулировкой'),
-        tr('Измерение углов установки колёс'),
-        tr('Регулировка развала и схождения'),
-        tr('Выставление руля по центру'),
+        tr('Замена масла и фильтров'),
+        tr('Проверка подвески и тормозов'),
+        tr('Проверка технических жидкостей'),
+        tr('Отметка в сервисной книжке'),
       ],
       whenNeeded:
-          tr('После ремонта подвески, сильного удара о яму или если автомобиль уводит в сторону.'),
+          tr('Каждые 10–15 тыс. км или раз в год — по регламенту вашего автомобиля.'),
     ),
     _ServiceBanner(
       title: tr('Шиномонтаж'),
+      img: 'tire', // AG_POP1
       caption: tr('Смена шин'),
       icon: AgIcons.tire,
       color: Color(0xFF19B87A),
@@ -2069,6 +2072,7 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     _ServiceBanner(
       title: tr('Диагностика'),
+      img: 'diag', // AG_POP1
       caption: tr('Поиск причин'),
       icon: AgIcons.pulse,
       color: Color(0xFF8B5CF6),
@@ -2085,6 +2089,7 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     _ServiceBanner(
       title: tr('Тормозная система'),
+      img: 'brake', // AG_POP1
       caption: tr('Колодки, диски'),
       icon: AgIcons.brake,
       color: Color(0xFFF0443E),
@@ -2101,6 +2106,7 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     _ServiceBanner(
       title: tr('Кондиционер'),
+      img: 'ac', // AG_POP1
       caption: tr('Заправка'),
       icon: AgIcons.snow,
       color: Color(0xFF12B5CB),
@@ -2117,23 +2123,48 @@ class _HomeScreenState extends State<HomeScreen>
     ),
   ];
 
+  // AG_POP1: популярные услуги — сетка 3×2 картинками-плитками (как в макете); нет картинки — прежняя плитка
   Widget _serviceBannersRow() {
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 10.0;
-        final width = (constraints.maxWidth - gap * 2) / 3;
-
-        return SizedBox(
-          height: 146,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            itemCount: _serviceBanners.length,
-            separatorBuilder: (_, __) => const SizedBox(width: gap),
-            itemBuilder: (context, index) {
-              return _serviceBanner(_serviceBanners[index], width);
-            },
-          ),
+        final cols = constraints.maxWidth >= 700 ? 6 : 3;
+        final width = ((constraints.maxWidth - gap * (cols - 1)) / cols).floorToDouble();
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in _serviceBanners)
+              SizedBox(
+                width: width,
+                height: width,
+                child: item.img.isEmpty
+                    ? _serviceBanner(item, width)
+                    : _Pressable(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _openServiceFor(item.title),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .07), blurRadius: 14, offset: const Offset(0, 6))],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: Image.network(
+                                  'https://job.autogrom.ru/svc_img/popular/${item.img}.jpg?v=1',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _serviceBanner(item, width),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+          ],
         );
       },
     );
@@ -2595,8 +2626,10 @@ class _ServiceBanner {
     required this.about,
     required this.includes,
     required this.whenNeeded,
+    this.img = '', // AG_POP1: картинка-плитка с сервера job/svc_img/popular/<img>.jpg
   });
 
+  final String img;
   final String title;
   final String caption;
   final String icon;
