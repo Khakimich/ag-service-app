@@ -270,16 +270,6 @@ class _HubCardState extends State<_HubCard> {
                       ]),
                     ),
                   ),
-                  Positioned(
-                    left: 14,
-                    top: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .95), borderRadius: BorderRadius.circular(10)),
-                      child: Text(item.badge,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.colors[1])),
-                    ),
-                  ),
                 ]),
               ),
             ),
@@ -288,8 +278,24 @@ class _HubCardState extends State<_HubCard> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                  Row(children: [ // AG_SVCHUB8: плашка у названия, а не поверх картинки
+                    Expanded(
+                      child: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                    ),
+                    if (item.badge.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (item.soon ? cs.onSurfaceVariant : item.colors[1]).withValues(alpha: .12),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(item.badge,
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.colors[1])),
+                      ),
+                    ],
+                  ]),
                   const SizedBox(height: 4),
                   Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13.5, height: 1.3, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
