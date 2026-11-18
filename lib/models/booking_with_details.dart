@@ -29,14 +29,18 @@ class BookingWithDetails {
   factory BookingWithDetails.fromJson(
     Map<String, dynamic> json,
   ) => BookingWithDetails(
-    id: json['id'] as String,
+    id: json['id'].toString(),
     scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
-    durationMinutes: json['duration_minutes'] as int,
-    status: json['status'] as String,
-    customerName: json['customer_name'] as String,
-    customerPhone: json['customer_phone'] as String,
-    service: Service.fromJson(json['service'] as Map<String, dynamic>),
-    specialist: Specialist.fromJson(json['specialist'] as Map<String, dynamic>),
+    durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 30,
+    status: json['status']?.toString() ?? 'pending',
+    customerName: json['customer_name']?.toString() ?? '',
+    customerPhone: json['customer_phone']?.toString() ?? '',
+    service: Service.fromJson(json['service'] is Map /* AG_BKFIX1 */
+        ? Map<String, dynamic>.from(json['service'] as Map)
+        : {'id': '', 'title': tr('Услуга'), 'price_from': 0, 'duration_minutes': (json['duration_minutes'] as num?)?.toInt() ?? 30}),
+    specialist: Specialist.fromJson(json['specialist'] is Map /* AG_BKFIX1 */
+        ? Map<String, dynamic>.from(json['specialist'] as Map)
+        : {'id': '', 'full_name': tr('Мастер AG Service')}),
     car:
         json['car'] == null
             ? null
