@@ -1,3 +1,5 @@
+import 'package:http/http.dart' as http; // AG_HDR_E
+import 'dart:convert'; // AG_HDR_E
 import '../providers/booking_flow_provider.dart'; // AG_QUICKBOOK1
 import 'package:mobile/core/promo_splash.dart'; // AG_PROMO1
 import '../../../core/update_checker.dart'; // AG_UPD1
@@ -179,223 +181,123 @@ class _HomeScreenState extends State<HomeScreen>
     return tr('Добрый вечер');
   }
 
+  // AG_HDR_E: шапка «вариант Е» — бренд слева, уведомления и аватар справа, приветствие с датой и погодой
   Widget _header() {
     final auth = context.watch<AuthProvider>();
-    final notifications = context.watch<NotificationsProvider>();
-    final unreadCount = notifications.unreadCount;
-
+    final unreadCount = context.watch<NotificationsProvider>().unreadCount;
     final fullName = (auth.user?.name ?? '').trim();
-    final firstName =
-        fullName.isEmpty ? '' : fullName.split(RegExp(r'\s+')).first;
+    final firstName = fullName.isEmpty ? '' : fullName.split(RegExp(r'\s+')).first;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? Colors.white : const Color(0xFF15171C);
+    final mut = isDark ? const Color(0xFFAEB1B8) : const Color(0xFF7A7F88);
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    final now = DateTime.now();
+    final dateText = '${tr(days[now.weekday - 1])}, ${now.day} ${tr(months[now.month - 1])}';
 
-    final title =
-        auth.isLoggedIn && firstName.isNotEmpty ? firstName : 'AG Service';
-
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final primaryText = isDark ? Colors.white : const Color(0xFF111318);
-
-    final secondaryText =
-        isDark ? const Color(0xFFAEB1B8) : const Color(0xFF737780);
-
-    return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      color: Colors.transparent,
-      child: Row(
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(22),
-              onTap: () {
-                if (auth.isLoggedIn) {
-                  context.go('/profile');
-                } else {
-                  context.push('/login');
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color:
-                              isDark
-                                  ? const Color(0xFF3A3C42)
-                                  : const Color(0xFFE1E3E7),
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/logo.png',
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 175),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _greeting(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: secondaryText,
-                              fontSize: 13,
-                              height: 1.1,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: primaryText,
-                                    fontSize: 21,
-                                    height: 1,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -.4,
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(width: 2),
-
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                size: 25,
-                                color: secondaryText,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+    Widget tile({required Widget child, required VoidCallback onTap, Gradient? gradient}) => Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Ink(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: gradient == null ? (isDark ? const Color(0xFF1F2227) : Colors.white) : null,
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 12, offset: const Offset(0, 4))],
               ),
+              child: child,
             ),
           ),
+        );
 
-          const Spacer(),
+    final letter = firstName.isNotEmpty ? firstName.characters.first.toUpperCase() : '';
+    void openProfile() => auth.isLoggedIn ? context.go('/profile') : context.push('/login');
 
-          GlassSurface(
-            radius: 16,
-            blur: 14,
-            shadow: false,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: _openSearch,
-              child: SizedBox(
-                width: 46,
-                height: 46,
-                child: Center(
-                  child: AgIcon(AgIcons.search, size: 24, color: primaryText),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const SizedBox(height: 6),
+      Row(children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.asset('assets/logo.png', width: 44, height: 44, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text('AG Service', maxLines: 1, style: TextStyle(color: ink, fontSize: 19, height: 1.05, fontWeight: FontWeight.w900, letterSpacing: -.3)),
+            const SizedBox(height: 2),
+            Text(tr('АВТОСЕРВИС · ЕКБ'), maxLines: 1,
+                style: const TextStyle(color: Color(0xFFF26200), fontSize: 11, height: 1.1, fontWeight: FontWeight.w800, letterSpacing: .6)),
+          ]),
+        ),
+        tile(
+          onTap: () => context.push('/profile/notifications'),
+          child: Stack(clipBehavior: Clip.none, children: [
+            Center(child: AgIcon(AgIcons.bell, size: 22, color: ink)),
+            if (unreadCount > 0)
+              Positioned(
+                right: 5, top: 4,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF26200),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: isDark ? const Color(0xFF1F2227) : Colors.white, width: 2),
+                  ),
+                  child: Text(unreadCount > 99 ? '99+' : '$unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, height: 1, fontWeight: FontWeight.w900)),
                 ),
               ),
-            ),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        tile(
+          onTap: openProfile,
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFD7B8), Color(0xFFFFB27A)]),
+          child: Center(
+            child: letter.isNotEmpty
+                ? Text(letter, style: const TextStyle(color: Color(0xFF8A3B00), fontSize: 18, fontWeight: FontWeight.w900))
+                : const Icon(Icons.person_rounded, color: Color(0xFF8A3B00), size: 24),
           ),
-
-          const SizedBox(width: 7),
-
-          GlassSurface(
-            radius: 16,
-            blur: 14,
-            shadow: false,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                context.push('/profile/notifications');
-              },
-              child: SizedBox(
-                width: 46,
-                height: 46,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        transitionBuilder: (child, animation) {
-                          return ScaleTransition(
-                            scale: animation,
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: AgIcon(
-                          AgIcons.bell,
-                          key: ValueKey(unreadCount > 0),
-                          size: 24,
-                          color: primaryText,
-                        ),
-                      ),
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 4,
-                        top: 3,
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE52B3D),
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(
-                            unreadCount > 99 ? '99+' : '$unreadCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              height: 1,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+        ),
+      ]),
+      const SizedBox(height: 14),
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: openProfile,
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: isDark ? const [Color(0xFF1F2227), Color(0xFF2A2119)] : const [Colors.white, Color(0xFFFFF1E4)],
               ),
+              boxShadow: isDark ? null : [BoxShadow(color: const Color(0xFFF26200).withValues(alpha: .07), blurRadius: 16, offset: const Offset(0, 6))],
             ),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(firstName.isNotEmpty ? '${_greeting()}, $firstName' : _greeting(),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: ink, fontSize: 20, height: 1.15, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                  const SizedBox(height: 3),
+                  Text(dateText, style: TextStyle(color: mut, fontSize: 13, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+              const SizedBox(width: 10),
+              _AgWeather(ink: ink),
+            ]),
           ),
-        ],
+        ),
       ),
-    );
+    ]);
   }
 
   Widget _referralBankCard() {
@@ -3129,4 +3031,59 @@ class _CardWavesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CardWavesPainter old) => old.dark != dark;
+}
+
+
+/* AG_HDR_E: погода в Екатеринбурге (Open-Meteo, без ключа), кэш на 30 минут */
+class _AgWeather extends StatefulWidget {
+  const _AgWeather({required this.ink});
+  final Color ink;
+  @override
+  State<_AgWeather> createState() => _AgWeatherState();
+}
+
+class _AgWeatherState extends State<_AgWeather> {
+  static int? _t;
+  static int? _code;
+  static DateTime? _at;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_at == null || DateTime.now().difference(_at!) > const Duration(minutes: 30)) _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await http
+          .get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=56.84&longitude=60.61&current=temperature_2m,weather_code&timezone=auto'))
+          .timeout(const Duration(seconds: 8));
+      final j = jsonDecode(r.body) as Map<String, dynamic>;
+      final c = j['current'] as Map<String, dynamic>;
+      _t = (c['temperature_2m'] as num).round();
+      _code = (c['weather_code'] as num).toInt();
+      _at = DateTime.now();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  String _emoji(int c) {
+    if (c == 0) return DateTime.now().hour >= 18 || DateTime.now().hour < 6 ? '🌙' : '☀️';
+    if (c <= 2) return '⛅';
+    if (c == 3) return '☁️';
+    if (c <= 48) return '🌫️';
+    if ((c >= 71 && c <= 77) || c == 85 || c == 86) return '🌨️';
+    if (c >= 95) return '⛈️';
+    return '🌧️';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_t == null || _code == null) return const SizedBox(width: 4);
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(_emoji(_code!), style: const TextStyle(fontSize: 24, height: 1.1)),
+      Text('${_t! > 0 ? '+' : _t! < 0 ? '−' : ''}${_t!.abs()}°',
+          style: TextStyle(color: widget.ink, fontSize: 13.5, fontWeight: FontWeight.w800)),
+    ]);
+  }
 }
