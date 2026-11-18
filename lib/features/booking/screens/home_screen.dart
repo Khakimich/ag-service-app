@@ -2032,7 +2032,15 @@ class _HomeScreenState extends State<HomeScreen>
                     borderRadius: BorderRadius.circular(21),
                     border: Border.all(color: _border),
                   ),
-                  child: AgIcon3D.orLine(icon, size: 42, color: orange), // AG_UI2
+                  // AG_QICON1: иконка-картинка с сервера (меняется без обновления приложения); нет — прежняя 3D
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      'https://job.autogrom.ru/svc_img/quick/${AgIcon3D.kindFor(icon) ?? 'none'}.png?v=1',
+                      width: 60, height: 60, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(child: AgIcon3D.orLine(icon, size: 42, color: orange)),
+                    ),
+                  ),
                 ),
               ),
             ),
