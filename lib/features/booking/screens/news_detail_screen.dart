@@ -34,7 +34,6 @@ class NewsDetailScreen extends StatelessWidget {
     final w = MediaQuery.sizeOf(context).width;
     final heroH = (w * .74).clamp(280.0, 420.0) + top;
     final body = item.body.trim();
-    final short = item.shortDescription.trim();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -89,15 +88,7 @@ class NewsDetailScreen extends StatelessWidget {
                           style: const TextStyle(color: Colors.white, fontSize: 28, height: 1.12, fontWeight: FontWeight.w900, letterSpacing: -.5,
                               shadows: [Shadow(color: Color(0x33000000), blurRadius: 8)])),
                     ),
-                    if (short.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: w * .6),
-                        child: Text(short, maxLines: 3, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3, fontWeight: FontWeight.w700,
-                                shadows: [Shadow(color: Color(0x33000000), blurRadius: 6)])),
-                      ),
-                    ],
+                    // AG_NEWSDET2: описание в шапке убрано — оно перекрывало картинку
                     if (item.endsAt != null) ...[
                       const SizedBox(height: 12),
                       Text('${tr('до')} ${_d(item.endsAt!)}',
