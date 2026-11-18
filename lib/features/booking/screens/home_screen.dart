@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb; // AG_WEATHER2
+import 'package:geolocator/geolocator.dart'; // AG_WEATHER2
 import 'package:http/http.dart' as http; // AG_HDR_E
 import 'dart:convert'; // AG_HDR_E
 import '../providers/booking_flow_provider.dart'; // AG_QUICKBOOK1
@@ -3055,8 +3057,22 @@ class _AgWeatherState extends State<_AgWeather> {
 
   Future<void> _load() async {
     try {
+      // AG_WEATHER2: погода по месту телефона, если доступ к геолокации уже дан; иначе — Екатеринбург
+      var lat = 56.84, lon = 60.61;
+      try {
+        final perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
+          Position? p;
+          if (!kIsWeb) p = await Geolocator.getLastKnownPosition();
+          p ??= await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 6)),
+          );
+          lat = p.latitude;
+          lon = p.longitude;
+        }
+      } catch (_) {}
       final r = await http
-          .get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=56.84&longitude=60.61&current=temperature_2m,weather_code&timezone=auto'))
+          .get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=${lat.toStringAsFixed(2)}&longitude=${lon.toStringAsFixed(2)}&current=temperature_2m,weather_code&timezone=auto'))
           .timeout(const Duration(seconds: 8));
       final j = jsonDecode(r.body) as Map<String, dynamic>;
       final c = j['current'] as Map<String, dynamic>;
@@ -3080,10 +3096,24 @@ class _AgWeatherState extends State<_AgWeather> {
   @override
   Widget build(BuildContext context) {
     if (_t == null || _code == null) return const SizedBox(width: 4);
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(_emoji(_code!), style: const TextStyle(fontSize: 24, height: 1.1)),
-      Text('${_t! > 0 ? '+' : _t! < 0 ? '−' : ''}${_t!.abs()}°',
-          style: TextStyle(color: widget.ink, fontSize: 13.5, fontWeight: FontWeight.w800)),
-    ]);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // AG_WEATHER2: плашка с голубым фоном — белое облако видно и в светлой теме
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: dark ? const [Color(0xFF243447), Color(0xFF1B2735)] : const [Color(0xFF8EC5FF), Color(0xFF4F8DF5)],
+        ),
+        boxShadow: dark ? null : [BoxShadow(color: const Color(0xFF4F8DF5).withValues(alpha: .25), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(_emoji(_code!), style: const TextStyle(fontSize: 22, height: 1.1)),
+        const SizedBox(width: 5),
+        Text('${_t! > 0 ? '+' : _t! < 0 ? '−' : ''}${_t!.abs()}°',
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+      ]),
+    );
   }
 }
