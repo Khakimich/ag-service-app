@@ -13,6 +13,8 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../../core/i18n.dart';
+import 'package:url_launcher/url_launcher.dart'; // AG_GARAGE5
+import '../booking/providers/company_provider.dart'; // AG_GARAGE5
 import '../auth/providers/auth_provider.dart';
 import '../chat/data/chat_repository.dart';
 
@@ -174,44 +176,75 @@ class _GarageScreenState extends State<GarageScreen> {
     final free = cars?.where((c) => c.available).length ?? 0;
     return Scaffold(
       backgroundColor: _bg(context),
+      // AG_GARAGE5: нижняя панель как у «Эвакуатора»
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
+        decoration: BoxDecoration(
+          color: _card(context),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 16, offset: const Offset(0, -4))],
+        ),
+        child: SizedBox(
+          height: 50,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _o,
+              side: BorderSide(color: _o.withValues(alpha: .5), width: 1.4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+            onPressed: () async {
+              final phone = (context.read<CompanyProvider>().profile?.phone ?? '').replaceAll(RegExp(r'[^\d+]'), '');
+              if (phone.isEmpty) return;
+              await launchUrl(Uri.parse('tel:$phone'));
+            },
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              _svg(_I.phone(), 19),
+              const SizedBox(width: 8),
+              Text(tr('Позвонить по аренде'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        ),
+      ),
       body: RefreshIndicator(
         color: _o,
         onRefresh: _load,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // шапка
+            // AG_GARAGE5: шапка и блоки в стиле экрана «Эвакуатор»
             SliverToBoxAdapter(
               child: Container(
-                padding: EdgeInsets.fromLTRB(18, top + 8, 18, 26),
+                padding: EdgeInsets.fromLTRB(18, top + 8, 18, 36),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
                       colors: [Color(0xFFFF8A2A), Color(0xFFFF6A00), Color(0xFFE85500)]),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _RoundBtn(icon: _I.back(), onTap: () => context.canPop() ? context.pop() : context.go('/')),
-                  const SizedBox(height: 16),
-                  Row(children: [
+                  const SizedBox(height: 14),
+                  Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('AG Гараж', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -.8)),
-                        const SizedBox(height: 4),
-                        Text(tr('Аренда авто для работы в такси и поездок'),
-                            style: TextStyle(color: Colors.white.withValues(alpha: .92), fontSize: 14.5, fontWeight: FontWeight.w600, height: 1.3)),
+                        Text(tr('Аренда авто'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -.6, height: 1.1)),
+                        const SizedBox(height: 6),
+                        Text(tr('AG Гараж — машины для работы в такси и поездок'),
+                            style: TextStyle(color: Colors.white.withValues(alpha: .9), fontSize: 14, height: 1.3, fontWeight: FontWeight.w600)),
                       ]),
                     ),
+                    const SizedBox(width: 10),
                     Container(
-                      width: 64, height: 64, alignment: Alignment.center,
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18), borderRadius: BorderRadius.circular(20)),
-                      child: _svg(_I.key(), 34),
+                      width: 76, height: 76, alignment: Alignment.center,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 18, offset: const Offset(0, 8))]),
+                      child: _svg(_I.car(), 44),
                     ),
                   ]),
                   if (cars != null && cars.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Wrap(spacing: 8, runSpacing: 8, children: [
-                      _HeadChip(text: trf('{0} свободно', [free])),
-                      _HeadChip(text: trf('от {0} в сутки', [_money(cars.map((c) => c.priceFrom).reduce((a, b) => a < b ? a : b))])),
+                      _HeadChip(icon: _I.check('#FFFFFF'), text: trf('{0} свободно', [free])),
+                      _HeadChip(icon: _I.key(), text: trf('от {0} в сутки', [_money(cars.map((c) => c.priceFrom).reduce((a, b) => a < b ? a : b))])),
+                      if (cars.any((c) => c.forTaxi)) _HeadChip(icon: _I.taxi('#FFFFFF'), text: tr('для такси')),
                     ]),
                   ],
                 ]),
@@ -219,18 +252,33 @@ class _GarageScreenState extends State<GarageScreen> {
             ),
             if (cars != null && cars.isNotEmpty)
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 60,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-                    children: [
-                      for (final f in _filters)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _FilterChip(text: f.$2, on: _filter == f.$1, onTap: () => setState(() => _filter = f.$1)),
+                child: Transform.translate(
+                  offset: const Offset(0, -18),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                    decoration: BoxDecoration(
+                      color: _card(context),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 20, offset: const Offset(0, 6))],
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(tr('Подобрать машину'), style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900, letterSpacing: -.3)),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 38,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            for (final f in _filters)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: _FilterChip(text: f.$2, on: _filter == f.$1, onTap: () => setState(() => _filter = f.$1)),
+                              ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ]),
                   ),
                 ),
               ),
@@ -250,7 +298,7 @@ class _GarageScreenState extends State<GarageScreen> {
               ))
             else
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(14, 8, 14, 28 + MediaQuery.paddingOf(context).bottom),
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
                 sliver: SliverList.separated(
                   itemCount: _shown.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 14),
@@ -284,13 +332,17 @@ class _RoundBtn extends StatelessWidget {
 }
 
 class _HeadChip extends StatelessWidget {
-  const _HeadChip({required this.text});
+  const _HeadChip({required this.text, this.icon});
   final String text;
+  final String? icon;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .2), borderRadius: BorderRadius.circular(20)),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18), borderRadius: BorderRadius.circular(20)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[_svg(icon!, 15), const SizedBox(width: 6)],
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800)),
+        ]),
       );
 }
 
