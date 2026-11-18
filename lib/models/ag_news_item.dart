@@ -7,6 +7,7 @@ class AgNewsItem {
     required this.body,
     required this.imageUrl,
     required this.publishedAt,
+    this.endsAt, // AG_NEWSDET1
   });
 
   final String id;
@@ -16,6 +17,7 @@ class AgNewsItem {
   final String body;
   final String? imageUrl;
   final DateTime? publishedAt;
+  final DateTime? endsAt;
 
   bool get isPromotion => type == 'promotion';
 
@@ -33,6 +35,7 @@ class AgNewsItem {
       publishedAt: json['published_at'] == null
           ? null
           : DateTime.tryParse(json['published_at'].toString()),
+      endsAt: json['ends_at'] == null ? null : DateTime.tryParse(json['ends_at'].toString()),
     );
   }
 }
