@@ -3083,16 +3083,31 @@ class _AgWeatherState extends State<_AgWeather> {
     } catch (_) {}
   }
 
-  // AG_WEB1: иконки Material вместо эмодзи — в веб-версии не нужны шрифты Noto Emoji
-  IconData _icon(int c) {
+  // AG_WEB2: погода — свои SVG (не зависят от шрифтов и кэша браузера)
+  String _svg(int c) {
+    const sun = '<circle cx="12" cy="12" r="4.2" fill="#FFD84D"/><g stroke="#FFD84D" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g>';
+    const moon = '<path d="M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z" fill="#FFE9A8"/>';
+    const cloud = '<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8 1.4A3.3 3.3 0 0 0 7 18.5z" fill="#fff"/>';
+    const smallSun = '<circle cx="8" cy="8" r="3.4" fill="#FFD84D"/><g stroke="#FFD84D" stroke-width="1.6" stroke-linecap="round"><path d="M8 1.8v1.4M1.8 8h1.4M3.6 3.6l1 1M12.4 3.6l-1 1"/></g>';
+    const snow = '<g stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M8 20.5v2M12 20v2.5M16 20.5v2"/></g>';
+    const rain = '<g stroke="#CFE6FF" stroke-width="1.8" stroke-linecap="round"><path d="M8.5 20l-1 2.3M12.5 20l-1 2.3M16.5 20l-1 2.3"/></g>';
+    const bolt = '<path d="M12.5 18.5l-2.3 3.6h2.2l-1 2.4 3.3-4h-2.2l1-2z" fill="#FFD84D"/>';
     final night = DateTime.now().hour >= 18 || DateTime.now().hour < 6;
-    if (c == 0) return night ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded;
-    if (c <= 2) return Icons.wb_cloudy_rounded;
-    if (c == 3) return Icons.cloud_rounded;
-    if (c <= 48) return Icons.foggy;
-    if ((c >= 71 && c <= 77) || c == 85 || c == 86) return Icons.ac_unit_rounded;
-    if (c >= 95) return Icons.thunderstorm_rounded;
-    return Icons.grain_rounded;
+    String b;
+    if (c == 0) {
+      b = night ? moon : sun;
+    } else if (c <= 2) {
+      b = (night ? '' : smallSun) + cloud;
+    } else if (c == 3 || c <= 48) {
+      b = cloud;
+    } else if ((c >= 71 && c <= 77) || c == 85 || c == 86) {
+      b = '<g transform="translate(0 -2)">$cloud</g>$snow';
+    } else if (c >= 95) {
+      b = '<g transform="translate(0 -3)">$cloud</g>$bolt';
+    } else {
+      b = '<g transform="translate(0 -2)">$cloud</g>$rain';
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">$b</svg>';
   }
 
   @override
@@ -3111,7 +3126,7 @@ class _AgWeatherState extends State<_AgWeather> {
         boxShadow: dark ? null : [BoxShadow(color: const Color(0xFF4F8DF5).withValues(alpha: .25), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(_icon(_code!), color: Colors.white, size: 22),
+        SvgPicture.string(_svg(_code!), width: 24, height: 24),
         const SizedBox(width: 5),
         Text('${_t! > 0 ? '+' : _t! < 0 ? '-' : ''}${_t!.abs()}°',
             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
