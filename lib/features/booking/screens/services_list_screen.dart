@@ -150,267 +150,126 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
     return 'assets/icons/services/categories/maintenance.png';
   }
 
+  /* AG_SVC3: каталог категорий — адаптивная сетка с иконками и счётчиками */
   void _openCategoriesCatalog(List<Service> services, List<String> categories) {
+    final counts = <String, int>{for (final c in categories) c: c == 'Все' ? services.length : services.where((s) => s.category == c).length};
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: .55),
+      barrierColor: Colors.black.withValues(alpha: .5),
       builder: (sheetContext) {
         final colors = Theme.of(sheetContext).colorScheme;
         final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-
-        int countFor(String category) {
-          if (category == 'Все') {
-            return services.length;
-          }
-
-          return services.where((s) => s.category == category).length;
-        }
-
-        return FractionallySizedBox(
-          heightFactor: .82,
-          child: Container(
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .22),
-                  blurRadius: 30,
-                  offset: const Offset(0, -8),
+        final w = MediaQuery.sizeOf(sheetContext).width;
+        final cols = w >= 1000 ? 5 : w >= 760 ? 4 : w >= 480 ? 3 : 2;
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: FractionallySizedBox(
+              heightFactor: .86,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 30, offset: const Offset(0, -8))],
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-
-                Container(
-                  width: 42,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: colors.onSurfaceVariant.withValues(alpha: .28),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 14, 14),
-                  child: Row(
-                    children: [
+                child: Column(children: [
+                  const SizedBox(height: 10),
+                  Container(width: 42, height: 5, decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .28), borderRadius: BorderRadius.circular(99))),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 10, 12),
+                    child: Row(children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 46, height: 46,
                         decoration: BoxDecoration(
-                          color: BrandColors.orange.withValues(alpha: .12),
-                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), BrandColors.orange]),
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [BoxShadow(color: BrandColors.orange.withValues(alpha: .3), blurRadius: 12, offset: const Offset(0, 5))],
                         ),
-                        child: const Icon(
-                          Icons.grid_view_rounded,
-                          color: BrandColors.orange,
-                          size: 24,
-                        ),
+                        child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(width: 13),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tr('Каталог услуг'),
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -.4,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              trf('{0} услуг в {1} категориях', [services.length, categories.length - 1]),
-                              style: TextStyle(
-                                color: colors.onSurfaceVariant,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(tr('Все категории'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                          Text(trf('{0} категорий', [categories.where((c) => c != 'Все').length]),
+                              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                        ]),
                       ),
                       IconButton(
-                        tooltip: tr('Закрыть'),
                         onPressed: () => Navigator.of(sheetContext).pop(),
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icon(Icons.close_rounded, color: colors.onSurface),
+                        style: IconButton.styleFrom(backgroundColor: colors.surfaceContainerHighest.withValues(alpha: .7), fixedSize: const Size(44, 44)),
                       ),
-                    ],
+                    ]),
                   ),
-                ),
-
-                Divider(
-                  height: 1,
-                  color: colors.outlineVariant.withValues(alpha: .45),
-                ),
-
-                Expanded(
-                  child: GridView.builder(
-                    padding: EdgeInsets.fromLTRB(16, 18, 16, 110 + MediaQuery.paddingOf(sheetContext).bottom),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.45,
-                        ),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final category = categories[index];
-                      final selected = category == _selectedCategory;
-                      final count = countFor(category);
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(22),
-                          onTap: () {
-                            setState(() {
-                              _selectedCategory = category;
-                            });
-
-                            Navigator.of(sheetContext).pop();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color:
-                                  selected
-                                      ? BrandColors.orange
-                                      : isDark
-                                      ? const Color(0xFF1B1E22)
-                                      : colors.surfaceContainerHighest
-                                          .withValues(alpha: .55),
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color:
-                                    selected
-                                        ? BrandColors.orange
-                                        : colors.outlineVariant.withValues(
-                                          alpha: .55,
-                                        ),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + MediaQuery.paddingOf(sheetContext).bottom),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols, crossAxisSpacing: 12, mainAxisSpacing: 12, mainAxisExtent: 132,
+                      ),
+                      itemCount: categories.length,
+                      itemBuilder: (context, index) {
+                        final category = categories[index];
+                        final on = category == _selectedCategory;
+                        final count = counts[category] ?? 0;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(22),
+                            onTap: () {
+                              setState(() => _selectedCategory = category);
+                              Navigator.of(sheetContext).pop();
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
+                              decoration: BoxDecoration(
+                                gradient: on ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFF8A3D), BrandColors.orange]) : null,
+                                color: on ? null : (isDark ? const Color(0xFF1B1E22) : const Color(0xFFFFF6EF)),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(color: on ? Colors.transparent : BrandColors.orange.withValues(alpha: .12)),
+                                boxShadow: on ? [BoxShadow(color: BrandColors.orange.withValues(alpha: .28), blurRadius: 16, offset: const Offset(0, 6))] : null,
                               ),
-                              boxShadow: [
-                                if (selected)
-                                  BoxShadow(
-                                    color: BrandColors.orange.withValues(
-                                      alpha: .22,
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Container(
+                                    width: 50, height: 50, padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: on ? Colors.white : (isDark ? Colors.white.withValues(alpha: .07) : Colors.white),
+                                      borderRadius: BorderRadius.circular(15),
+                                      boxShadow: on || isDark ? null : [BoxShadow(color: BrandColors.orange.withValues(alpha: .08), blurRadius: 8, offset: const Offset(0, 3))],
                                     ),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
+                                    child: Image.asset(_iconForCategory(category), fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) => const Icon(Icons.car_repair_rounded, color: BrandColors.orange)),
                                   ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 58,
-                                      height: 58,
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            selected
-                                                ? Colors.white.withValues(
-                                                  alpha: .18,
-                                                )
-                                                : BrandColors.orange.withValues(
-                                                  alpha: .10,
-                                                ),
-                                        borderRadius: BorderRadius.circular(13),
-                                      ),
-                                      child: Image.asset(
-                                        _iconForCategory(category),
-                                        fit: BoxFit.contain,
-                                        errorBuilder: (
-                                          context,
-                                          error,
-                                          stackTrace,
-                                        ) {
-                                          return Icon(
-                                            Icons.car_repair_rounded,
-                                            color:
-                                                selected
-                                                    ? Colors.white
-                                                    : BrandColors.orange,
-                                            size: 38,
-                                          );
-                                        },
-                                      ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: on ? Colors.white.withValues(alpha: .22) : BrandColors.orange.withValues(alpha: .12),
+                                      borderRadius: BorderRadius.circular(99),
                                     ),
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            selected
-                                                ? Colors.white.withValues(
-                                                  alpha: .18,
-                                                )
-                                                : isDark
-                                                ? Colors.white.withValues(
-                                                  alpha: .12,
-                                                )
-                                                : const Color(
-                                                  0xFF16A34A,
-                                                ).withValues(alpha: .12),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '$count',
-                                        style: TextStyle(
-                                          color:
-                                              selected
-                                                  ? Colors.white
-                                                  : isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF16A34A),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                    child: Text('$count', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: on ? Colors.white : BrandColors.orange)),
+                                  ),
+                                ]),
                                 const Spacer(),
-                                Text(
-                                  category == 'Все' ? tr('Все услуги') : category,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color:
-                                        selected
-                                            ? Colors.white
-                                            : colors.onSurface,
-                                    fontSize: 13,
-                                    height: 1.15,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
+                                Text(category == 'Все' ? tr('Все услуги') : category,
+                                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 14, height: 1.15, fontWeight: FontWeight.w800, color: on ? Colors.white : colors.onSurface)),
+                              ]),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ]),
+              ),
             ),
           ),
         );
@@ -458,16 +317,11 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
                   focusNode: _searchFocus,
                   onBack: () => context.agBack(), // AG_FIX1
                   onToggleSearch: _toggleSearch,
+                  title: _selectedCategory == 'Все' ? tr('Все услуги') : _selectedCategory, // AG_SVC3
+                  onOpenCatalog: services.isEmpty ? null : () => _openCategoriesCatalog(services, categories),
+                  filtered: _selectedCategory != 'Все',
+                  onResetCategory: () => setState(() => _selectedCategory = 'Все'),
                 ),
-                if (!loading && !snapshot.hasError && services.isNotEmpty)
-                  _AgCategoryStrip(
-                    categories: categories,
-                    selected: _selectedCategory,
-                    countFor: (c) => c == 'Все' ? services.length : services.where((s) => s.category == c).length,
-                    iconFor: _iconForCategory,
-                    onSelect: (c) => setState(() => _selectedCategory = c),
-                    onOpenCatalog: () => _openCategoriesCatalog(services, categories),
-                  ),
                 Expanded(
                   child: loading
                       ? const _LoadingState()
@@ -534,14 +388,12 @@ class _ServicesListScreenState extends State<ServicesListScreen> {
                       child: Text(
                         _query.isNotEmpty
                             ? trf('Найдено: {0}', [filtered.length])
-                            : (_selectedCategory == 'Все' ? tr('Все услуги') : _selectedCategory),
+                            : trf('{0} услуг', [filtered.length]), // AG_SVC3: название уже в шапке
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
-                    Text('${filtered.length}',
-                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
@@ -577,8 +429,16 @@ class _AgSvcTopBar extends StatelessWidget {
     required this.focusNode,
     required this.onBack,
     required this.onToggleSearch,
+    required this.title,
+    required this.onOpenCatalog,
+    required this.filtered,
+    required this.onResetCategory,
   });
 
+  final String title;
+  final VoidCallback? onOpenCatalog;
+  final bool filtered;
+  final VoidCallback onResetCategory;
   final int total;
   final bool searchOpen;
   final TextEditingController controller;
@@ -668,13 +528,29 @@ class _AgSvcTopBar extends StatelessWidget {
                 _round(context, Icons.arrow_back_ios_new_rounded, onBack),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(tr('Услуги'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -.6, height: 1.05)),
-                    if (total > 0)
-                      Text(trf('{0} услуг автосервиса', [total]),
-                          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12.5, fontWeight: FontWeight.w600)),
-                  ]),
+                  child: GestureDetector(
+                    onTap: onOpenCatalog,
+                    child: Row(children: [
+                      Flexible(
+                        child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -.6, height: 1.05)),
+                      ),
+                      if (filtered)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(99),
+                            onTap: onResetCategory,
+                            child: Icon(Icons.cancel_rounded, size: 20, color: colors.onSurfaceVariant),
+                          ),
+                        ),
+                    ]),
+                  ),
                 ),
+                if (onOpenCatalog != null) ...[
+                  _round(context, Icons.grid_view_rounded, onOpenCatalog!),
+                  const SizedBox(width: 8),
+                ],
                 _round(context, Icons.search_rounded, onToggleSearch, accent: true),
               ]),
       ),
