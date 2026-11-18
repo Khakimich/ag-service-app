@@ -73,9 +73,9 @@ class ServicesHubSection extends StatefulWidget {
 
 // AG_SVCHUB8: плавный слайдер с доводкой к карточке + стрелки, чтобы было понятно, что листается
 class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTickerProviderStateMixin {
-  static const double _step = 236 + 12;
+  double _step = 236 + 12; // AG_SVCHUB10: ширина карточки считается от экрана — по 2 на телефоне
   final _ctl = ScrollController();
-  late final AnimationController _nudge = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+  late final AnimationController _nudge = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
   bool _atStart = true, _atEnd = false, _snapping = false;
 
   @override
@@ -153,8 +153,13 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
         _arrow(true, _atEnd == false, () => _go(1)),
       ]),
       const SizedBox(height: 12),
-      SizedBox(
-        height: 250, // AG_SVCHUB9
+      LayoutBuilder(builder: (context, box) {
+        final cols = box.maxWidth >= 900 ? 4 : box.maxWidth >= 600 ? 3 : 2;
+        final cardW = ((box.maxWidth - 12 * (cols - 1)) / cols).floorToDouble();
+        _step = cardW + 12;
+        final imgH = (cardW / 1.6).roundToDouble();
+        return SizedBox(
+        height: imgH + 86,
         child: Stack(clipBehavior: Clip.none, children: [
           NotificationListener<ScrollEndNotification>(
             onNotification: _onEnd,
@@ -165,40 +170,12 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
               clipBehavior: Clip.none,
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => _HubCard(item: items[i]),
-            ),
-          ),
-          // подсказка «листай»: пульсирующая стрелка у правого края, пока не долистали
-          Positioned(
-            right: 4, top: 0, bottom: 0,
-            child: IgnorePointer(
-              ignoring: _atEnd,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: _atEnd ? 0 : 1,
-                child: Center(
-                  child: AnimatedBuilder(
-                    animation: _nudge,
-                    builder: (_, child) => Transform.translate(offset: Offset(-6 * _nudge.value, 0), child: child),
-                    child: GestureDetector(
-                      onTap: () => _go(1),
-                      child: Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 12, offset: const Offset(0, 4))],
-                        ),
-                        child: Center(child: _chev(true, const Color(0xFFFF6A00), 24)),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              itemBuilder: (_, i) => _HubCard(item: items[i], width: cardW, imageHeight: imgH),
             ),
           ),
         ]),
-      ),
+      );
+      }),
     ]);
   }
 
@@ -218,8 +195,9 @@ class _HubItem {
 }
 
 class _HubCard extends StatefulWidget {
-  const _HubCard({required this.item});
+  const _HubCard({required this.item, this.width = 236, this.imageHeight = 148});
   final _HubItem item;
+  final double width, imageHeight;
   @override
   State<_HubCard> createState() => _HubCardState();
 }
@@ -241,7 +219,7 @@ class _HubCardState extends State<_HubCard> {
         scale: _down ? .97 : 1,
         duration: const Duration(milliseconds: 140),
         child: Container(
-          width: 236,
+          width: widget.width,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: dark ? const Color(0xFF1B1E22) : Colors.white,
@@ -251,7 +229,7 @@ class _HubCardState extends State<_HubCard> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             // иллюстрация
             SizedBox(
-              height: 148, // AG_SVCHUB9: картинки 1000×625 (1,6:1)
+              height: widget.imageHeight, // AG_SVCHUB10
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.colors),
@@ -276,29 +254,29 @@ class _HubCardState extends State<_HubCard> {
             // текст
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [ // AG_SVCHUB8: плашка у названия, а не поверх картинки
                     Expanded(
                       child: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                          style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, letterSpacing: -.3)),
                     ),
                     if (item.badge.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: (item.soon ? cs.onSurfaceVariant : item.colors[1]).withValues(alpha: .12),
                           borderRadius: BorderRadius.circular(9),
                         ),
                         child: Text(item.badge,
-                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.colors[1])),
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900, color: item.soon ? cs.onSurfaceVariant : item.colors[1])),
                       ),
                     ],
                   ]),
                   const SizedBox(height: 4),
                   Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13.5, height: 1.3, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                      style: TextStyle(fontSize: 12.5, height: 1.25, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
                 ]),
               ),
             ),
