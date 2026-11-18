@@ -154,7 +154,7 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
       ]),
       const SizedBox(height: 12),
       SizedBox(
-        height: 214,
+        height: 250, // AG_SVCHUB9
         child: Stack(clipBehavior: Clip.none, children: [
           NotificationListener<ScrollEndNotification>(
             onNotification: _onEnd,
@@ -251,7 +251,7 @@ class _HubCardState extends State<_HubCard> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             // иллюстрация
             SizedBox(
-              height: 112,
+              height: 148, // AG_SVCHUB9: картинки 1000×625 (1,6:1)
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.colors),
@@ -260,7 +260,7 @@ class _HubCardState extends State<_HubCard> {
                   // AG_SVCHUB6: реальное фото с сервера; если его нет — прежняя иллюстрация
                   Positioned.fill(
                     child: Image.network(
-                      'https://job.autogrom.ru/svc_img/hub/${item.icon}.jpg?v=20261118', // AG_SVCHUB7: версия — сбрасывает кэш старых картинок
+                      'https://job.autogrom.ru/svc_img/hub/${item.icon}.jpg?v=20261118b', // AG_SVCHUB7: версия — сбрасывает кэш старых картинок
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Stack(children: [
                         Positioned(right: -26, top: -30, child: _circle(120, .14)),
