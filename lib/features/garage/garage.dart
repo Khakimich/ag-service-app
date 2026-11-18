@@ -89,22 +89,24 @@ Future<List<RentCar>> _loadCars() async {
 
 // ───────────────────────── SVG-иконки ─────────────────────────
 class _I {
+  // AG_GARAGE6: «настоящие» цветные SVG-иконки (заливка, градиенты)
+  static String _r(String body) => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">$body</svg>';
   static String _l(String p, [String c = '#FF6A00', double w = 2]) =>
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="$c" stroke-width="$w" stroke-linecap="round" stroke-linejoin="round">$p</svg>';
   static String back([String c = '#FFFFFF']) => _l('<path d="M15 5l-7 7 7 7"/>', c, 2.6);
-  static String car([String c = '#FF6A00']) => _l('<path d="M5 16.5V12.5l1.8-4.6A2 2 0 0 1 8.7 6.6h6.6a2 2 0 0 1 1.9 1.3L19 12.5v4"/><path d="M3.5 12.5h17V17a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M6.5 18v1.5M17.5 18v1.5"/><circle cx="7.5" cy="15" r=".8"/><circle cx="16.5" cy="15" r=".8"/>', c);
-  static String key([String c = '#FFFFFF']) => _l('<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L19 4M16 7l2.5 2.5M14 9l2 2"/>', c, 2.2);
-  static String gear([String c = '#FF6A00']) => _l('<circle cx="6" cy="6" r="1.8"/><circle cx="12" cy="6" r="1.8"/><circle cx="18" cy="6" r="1.8"/><circle cx="6" cy="18" r="1.8"/><circle cx="12" cy="18" r="1.8"/><path d="M6 8v8M12 8v8M18 8v4H6"/>', c, 1.8);
-  static String fuel([String c = '#FF6A00']) => _l('<path d="M4 20V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15M3 20h12M4 10h10"/><path d="M14 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3"/>', c, 1.8);
-  static String cal([String c = '#FF6A00']) => _l('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', c, 1.8);
-  static String seat([String c = '#FF6A00']) => _l('<circle cx="9" cy="7" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 4a3 3 0 0 1 0 6M17.5 14a5 5 0 0 1 3 6"/>', c, 1.8);
-  static String palette([String c = '#FF6A00']) => _l('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1-1-1.6-1-2.6 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>', c, 1.8);
-  static String star([String c = '#FF6A00']) => _l('<path d="M12 3.5l2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/>', c, 1.8);
-  static String check([String c = '#16A34A']) => _l('<path d="M5 12.5l4.5 4.5L19 7.5"/>', c, 2.6);
-  static String taxi([String c = '#A16207']) => _l('<path d="M9.5 3.5h5l.8 2.5"/><path d="M5 16.5v-4l1.8-4.6A2 2 0 0 1 8.7 6.6h6.6a2 2 0 0 1 1.9 1.3L19 12.5v4"/><path d="M3.5 12.5h17v4.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/>', c, 2);
-  static String shield([String c = '#FF6A00']) => _l('<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>', c, 1.8);
-  static String phone([String c = '#FF6A00']) => _l('<path d="M5 4h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 6.1 6.1l1.4-2.3L20 15.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>', c, 1.9);
-  static String note([String c = '#FF6A00']) => _l('<path d="M5 4h14v16H5z"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/>', c, 1.8);
+  static String car([String c = '']) => _r('<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A3D"/><stop offset="1" stop-color="#E85500"/></linearGradient></defs><ellipse cx="12" cy="20.3" rx="9.5" ry="1.4" fill="#000" opacity=".15"/><path d="M2.8 15.2c0-1.5.9-2.5 2.4-2.9l1.9-3.9C7.6 7.5 8.5 7 9.6 7h4.8c1.1 0 2 .5 2.5 1.4l1.9 3.9c1.5.4 2.4 1.4 2.4 2.9v2.3a1 1 0 0 1-1 1H3.8a1 1 0 0 1-1-1z" fill="url(#a)"/><path d="M8.6 8.9c.2-.4.6-.6 1-.6h1.8v3.6H7.1zM12.6 8.3h1.8c.4 0 .8.2 1 .6l1.5 3H12.6z" fill="#D9F0FF"/><rect x="4.2" y="14.2" width="2.6" height="1.4" rx=".7" fill="#FFF4C2"/><rect x="17.2" y="14.2" width="2.6" height="1.4" rx=".7" fill="#FFF4C2"/><circle cx="7" cy="18.6" r="2" fill="#2A2E36"/><circle cx="17" cy="18.6" r="2" fill="#2A2E36"/><circle cx="7" cy="18.6" r=".8" fill="#C9CDD4"/><circle cx="17" cy="18.6" r=".8" fill="#C9CDD4"/>'); // AG_GARAGE6
+  static String key([String c = '']) => _r('<rect x="9.5" y="3" width="9" height="13" rx="3.2" fill="#2A2E36"/><rect x="11" y="5" width="6" height="2.4" rx="1.2" fill="#FF6A00"/><circle cx="14" cy="10.6" r="1.3" fill="#9CA3AF"/><circle cx="14" cy="13.6" r="1.3" fill="#9CA3AF"/><circle cx="6.5" cy="17.5" r="3.6" fill="none" stroke="#FFC83D" stroke-width="1.8"/><path d="M9.3 15.5l1.6-1.4" stroke="#FFC83D" stroke-width="1.8" stroke-linecap="round"/>'); // AG_GARAGE6
+  static String gear([String c = '']) => _r('<defs><radialGradient id="a" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#6B7280"/><stop offset="1" stop-color="#111827"/></radialGradient></defs><rect x="4" y="15" width="16" height="6" rx="2.2" fill="#D1D5DB"/><path d="M7 17.2h10M8.5 16.2v2M12 16.2v2M15.5 16.2v2" stroke="#6B7280" stroke-width="1" stroke-linecap="round"/><rect x="11" y="8" width="2" height="8" rx="1" fill="#9CA3AF"/><circle cx="12" cy="6.5" r="4" fill="url(#a)"/><ellipse cx="10.7" cy="5.2" rx="1.3" ry=".8" fill="#fff" opacity=".45"/>'); // AG_GARAGE6
+  static String fuel([String c = '']) => _r('<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#059669"/></linearGradient></defs><rect x="3.5" y="3" width="10.5" height="18" rx="2.4" fill="url(#a)"/><rect x="5.5" y="5.2" width="6.5" height="4.6" rx="1.2" fill="#ECFDF5"/><rect x="2.5" y="19.5" width="12.5" height="2" rx="1" fill="#065F46"/><path d="M14 9h1.8a1.6 1.6 0 0 1 1.6 1.6v5.6a1.3 1.3 0 0 0 2.6 0V8.6L17.8 6" fill="none" stroke="#374151" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.8 12.4c-1 1.3-1.4 2.1-1.4 2.7a1.4 1.4 0 0 0 2.8 0c0-.6-.4-1.4-1.4-2.7z" fill="#FFF"/>'); // AG_GARAGE6
+  static String cal([String c = '']) => _r('<rect x="3" y="4.5" width="18" height="16.5" rx="3.2" fill="#fff" stroke="#E5E7EB"/><path d="M3 7.7a3.2 3.2 0 0 1 3.2-3.2h11.6A3.2 3.2 0 0 1 21 7.7V10H3z" fill="#FF6A00"/><rect x="7" y="2.5" width="2.2" height="4.6" rx="1.1" fill="#9CA3AF"/><rect x="14.8" y="2.5" width="2.2" height="4.6" rx="1.1" fill="#9CA3AF"/><path d="M8.5 15.2l2.3 2.3 4.7-4.7" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'); // AG_GARAGE6
+  static String seat([String c = '']) => _r('<defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#60A5FA"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient></defs><rect x="6.6" y="2.6" width="5" height="3.6" rx="1.4" fill="#1E3A8A"/><path d="M6.5 7.2c0-.7.6-1.2 1.3-1.1l2.6.4c.7.1 1.2.7 1.1 1.4l-.9 6.6H6.8z" fill="url(#a)"/><path d="M5.5 15c0-.8.6-1.4 1.4-1.4h9.6c1.6 0 2.9 1.3 2.9 2.9v.8c0 .6-.4 1-1 1H6.5a1 1 0 0 1-1-1z" fill="url(#a)"/><path d="M9 18.3l-.8 3M16 18.3l.8 3" stroke="#374151" stroke-width="1.6" stroke-linecap="round"/>'); // AG_GARAGE6
+  static String palette([String c = '']) => _r('<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1-1-1.6-1-2.6 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z" fill="#FDE7D3" stroke="#F4B183"/><circle cx="7.3" cy="11.2" r="1.7" fill="#EF4444"/><circle cx="9.6" cy="6.9" r="1.7" fill="#F59E0B"/><circle cx="14.6" cy="6.9" r="1.7" fill="#22C55E"/><circle cx="17.6" cy="10.4" r="1.6" fill="#3B82F6"/>'); // AG_GARAGE6
+  static String star([String c = '']) => _r('<defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE27A"/><stop offset="1" stop-color="#F5A300"/></linearGradient></defs><path d="M12 2.8l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.1 6.4 20l1.1-6.2L3 9.4l6.2-.9z" fill="url(#a)" stroke="#E08E00" stroke-width=".8" stroke-linejoin="round"/><path d="M12 5.5l1.6 3.4 2.4.4" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.1" stroke-linecap="round"/>'); // AG_GARAGE6
+  static String check([String c = '']) => _r('<circle cx="12" cy="12" r="9.5" fill="#16A34A"/><path d="M7.5 12.3l3 3 6-6.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'); // AG_GARAGE6
+  static String taxi([String c = '']) => _r('<ellipse cx="12" cy="20.5" rx="9" ry="1.3" fill="#000" opacity=".15"/><rect x="9.5" y="3.5" width="5" height="2.6" rx=".8" fill="#111827"/><path d="M10.2 4.3h1.2v1h-1.2zM12.6 4.3h1.2v1h-1.2z" fill="#FFD43B"/><path d="M3 15.5c0-1.5.9-2.5 2.4-2.9l1.8-3.7C7.7 8 8.6 7.5 9.6 7.5h4.8c1 0 1.9.5 2.4 1.4l1.8 3.7c1.5.4 2.4 1.4 2.4 2.9v2.2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#FFC83D"/><path d="M8.7 9.3c.2-.4.6-.6 1-.6h1.7v3.4H7.3zM12.6 8.7h1.7c.4 0 .8.2 1 .6l1.4 2.8h-4.1z" fill="#D9F0FF"/><path d="M3.5 14.2h17" stroke="#111827" stroke-width="1" stroke-dasharray="1.2 1.2"/><circle cx="7" cy="18.8" r="1.9" fill="#2A2E36"/><circle cx="17" cy="18.8" r="1.9" fill="#2A2E36"/>'); // AG_GARAGE6
+  static String shield([String c = '']) => _r('<defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#60A5FA"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient></defs><path d="M12 2.5l7.5 3v5.6c0 4.6-3.1 8.6-7.5 10.4-4.4-1.8-7.5-5.8-7.5-10.4V5.5z" fill="url(#a)"/><path d="M8.5 12l2.4 2.4 4.8-4.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'); // AG_GARAGE6
+  static String phone([String c = '']) => _r('<circle cx="12" cy="12" r="10" fill="#22C55E"/><path d="M8.6 6.8h1.9l1 2.6-1.3.8a6.4 6.4 0 0 0 3.6 3.6l.8-1.3 2.6 1v1.9a1.2 1.2 0 0 1-1.2 1.2A9.4 9.4 0 0 1 7.4 8a1.2 1.2 0 0 1 1.2-1.2z" fill="#fff"/>'); // AG_GARAGE6
+  static String note([String c = '']) => _r('<rect x="4.5" y="2.5" width="15" height="19" rx="2.6" fill="#fff" stroke="#D1D5DB"/><rect x="7" y="5.5" width="5" height="6" rx="1.2" fill="#BFDBFE"/><circle cx="9.5" cy="7.6" r="1.2" fill="#3B82F6"/><path d="M7.8 10.6a1.8 1.8 0 0 1 3.4 0" fill="#3B82F6"/><path d="M13.5 6.5h3.5M13.5 9h3.5M7 14h10M7 17h7" stroke="#9CA3AF" stroke-width="1.4" stroke-linecap="round"/>'); // AG_GARAGE6
   static String minus([String c = '#FF6A00']) => _l('<path d="M6 12h12"/>', c, 2.6);
   static String plus([String c = '#FF6A00']) => _l('<path d="M12 6v12M6 12h12"/>', c, 2.6);
   static String bell([String c = '#FF6A00']) => _l('<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>', c, 1.9);
@@ -213,7 +215,7 @@ class _GarageScreenState extends State<GarageScreen> {
             // AG_GARAGE5: шапка и блоки в стиле экрана «Эвакуатор»
             SliverToBoxAdapter(
               child: Container(
-                padding: EdgeInsets.fromLTRB(18, top + 8, 18, 36),
+                padding: EdgeInsets.fromLTRB(18, top + 8, 18, 22),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
                       colors: [Color(0xFFFF8A2A), Color(0xFFFF6A00), Color(0xFFE85500)]),
@@ -252,8 +254,8 @@ class _GarageScreenState extends State<GarageScreen> {
             ),
             if (cars != null && cars.isNotEmpty)
               SliverToBoxAdapter(
-                child: Transform.translate(
-                  offset: const Offset(0, -18),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 14), // AG_GARAGE6: без наезда на шапку
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 14),
                     padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
@@ -298,7 +300,7 @@ class _GarageScreenState extends State<GarageScreen> {
               ))
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
                 sliver: SliverList.separated(
                   itemCount: _shown.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 14),
