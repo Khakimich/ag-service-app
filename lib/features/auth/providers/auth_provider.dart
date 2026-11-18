@@ -121,6 +121,7 @@ class AuthProvider extends ChangeNotifier {
   // ============================================================
 
   Future<void> _loadInstallReferrer(SharedPreferences prefs) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return; // AG_WEB1: Install Referrer есть только в Android
     try {
       final details = await PlayInstallReferrer.installReferrer.timeout(const Duration(seconds: 3)); // AG_FIX4
 

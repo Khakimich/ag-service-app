@@ -3083,14 +3083,16 @@ class _AgWeatherState extends State<_AgWeather> {
     } catch (_) {}
   }
 
-  String _emoji(int c) {
-    if (c == 0) return DateTime.now().hour >= 18 || DateTime.now().hour < 6 ? '🌙' : '☀️';
-    if (c <= 2) return '⛅';
-    if (c == 3) return '☁️';
-    if (c <= 48) return '🌫️';
-    if ((c >= 71 && c <= 77) || c == 85 || c == 86) return '🌨️';
-    if (c >= 95) return '⛈️';
-    return '🌧️';
+  // AG_WEB1: иконки Material вместо эмодзи — в веб-версии не нужны шрифты Noto Emoji
+  IconData _icon(int c) {
+    final night = DateTime.now().hour >= 18 || DateTime.now().hour < 6;
+    if (c == 0) return night ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded;
+    if (c <= 2) return Icons.wb_cloudy_rounded;
+    if (c == 3) return Icons.cloud_rounded;
+    if (c <= 48) return Icons.foggy;
+    if ((c >= 71 && c <= 77) || c == 85 || c == 86) return Icons.ac_unit_rounded;
+    if (c >= 95) return Icons.thunderstorm_rounded;
+    return Icons.grain_rounded;
   }
 
   @override
@@ -3109,9 +3111,9 @@ class _AgWeatherState extends State<_AgWeather> {
         boxShadow: dark ? null : [BoxShadow(color: const Color(0xFF4F8DF5).withValues(alpha: .25), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(_emoji(_code!), style: const TextStyle(fontSize: 22, height: 1.1)),
+        Icon(_icon(_code!), color: Colors.white, size: 22),
         const SizedBox(width: 5),
-        Text('${_t! > 0 ? '+' : _t! < 0 ? '−' : ''}${_t!.abs()}°',
+        Text('${_t! > 0 ? '+' : _t! < 0 ? '-' : ''}${_t!.abs()}°',
             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
       ]),
     );
