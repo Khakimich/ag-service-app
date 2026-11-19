@@ -143,7 +143,8 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
       _HubItem('shield', tr('ОСАГО'), tr('Выгодно · для такси'),
           const [Color(0xFF34D399), Color(0xFF059669)], tr('скоро'), () => _soon(context), soon: true),
       _HubItem('rent', tr('AG Гараж'), tr('Аренда · для такси и поездок'), // AG_RENT1
-          const [Color(0xFF3F3F46), Color(0xFF18181B)], tr('аренда'), () => context.push('/garage')),
+          // AG_RENT_SOON: пока не запущено — по нажатию «скоро будет»
+          const [Color(0xFF3F3F46), Color(0xFF18181B)], tr('скоро'), () => _soon(context, tr('AG Гараж — аренда авто скоро будет доступна 🚗')), soon: true),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
@@ -179,10 +180,14 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
     ]);
   }
 
-  static void _soon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(tr('Сравнение ОСАГО для такси скоро появится'))),
-    );
+  static void _soon(BuildContext context, [String? text]) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Text(text ?? tr('Сравнение ОСАГО для такси скоро появится'), style: const TextStyle(fontWeight: FontWeight.w700)),
+      ));
   }
 }
 
