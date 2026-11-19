@@ -2741,307 +2741,130 @@ class _AgBonusCard extends StatelessWidget {
   static const _doc = '<path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/>';
   static const _plus = '<path d="M12 5v14M5 12h14"/>';
 
+  // AG_BONUSCARD2: компактная карта — ~в 2 раза ниже прежней
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     const orange = Color(0xFFFF6A00);
-    // Цвета карты: светлая — оранжевая, тёмная — графит.
     final List<Color> bg = dark
         ? const [Color(0xFF2A2A2E), Color(0xFF18181B), Color(0xFF0E0E10)]
         : const [Color(0xFFFFA24A), Color(0xFFFF6A00), Color(0xFFE24E00)];
-    final sub = Colors.white.withValues(alpha: dark ? .55 : .78);
-    final pill = Colors.white.withValues(alpha: dark ? .08 : .18);
-    final pillLine = Colors.white.withValues(alpha: dark ? .10 : .24);
-    final accent = dark ? const Color(0xFFFFA24A) : Colors.white;
+    final sub = Colors.white.withValues(alpha: dark ? .6 : .82);
+    final pill = Colors.white.withValues(alpha: dark ? .09 : .2);
     final left = nextAt == null ? 0 : (nextAt! - invited);
 
     Widget icon(String p, double s, Color c, [double w = 2]) => SvgPicture.string(
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="$w" stroke-linecap="round" stroke-linejoin="round">$p</svg>',
-          width: s,
-          height: s,
-          colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+          width: s, height: s, colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
         );
 
+    Widget chip({required Widget child, VoidCallback? onTap}) => Material(
+          color: pill,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), child: child),
+          ),
+        );
+
+    final pts = points.round().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]} ');
+
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: dark ? Colors.black.withValues(alpha: .45) : orange.withValues(alpha: .30),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: bg),
+        boxShadow: [BoxShadow(color: dark ? Colors.black.withValues(alpha: .4) : orange.withValues(alpha: .28), blurRadius: 22, offset: const Offset(0, 10))],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: Container(
-          height: 232,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: bg),
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: Colors.white.withValues(alpha: dark ? .10 : .28)),
-          ),
-          child: Stack(
-            children: [
-              // свечение
-              Positioned(
-                right: -70,
-                top: -90,
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      (dark ? orange : Colors.white).withValues(alpha: dark ? .45 : .30),
-                      (dark ? orange : Colors.white).withValues(alpha: 0),
+      child: Stack(children: [
+        Positioned(right: -40, top: -50, child: Container(width: 150, height: 150,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .08)))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // 1: чип + бонусы + уровень
+            Row(children: [
+              SvgPicture.string(_chip, width: 30, height: 23),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(tr('Бонусы'), style: TextStyle(color: sub, fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .4)),
+                  Text('$pts ₽', maxLines: 1,
+                      style: const TextStyle(color: Colors.white, fontSize: 26, height: 1.05, fontWeight: FontWeight.w900, letterSpacing: -.6)),
+                ]),
+              ),
+              chip(
+                onTap: onRules,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  SvgPicture.asset(rankIcon, width: 16, height: 16),
+                  const SizedBox(width: 5),
+                  Text(rank, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: .5)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            // 2: код, приглашено, пригласить
+            Row(children: [
+              chip(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Код скопирован'))));
+                },
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(code, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: .6)),
+                  const SizedBox(width: 5),
+                  icon(_copy, 14, Colors.white),
+                ]),
+              ),
+              const SizedBox(width: 6),
+              chip(
+                onTap: onInvite,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  icon(_users, 15, Colors.white),
+                  const SizedBox(width: 4),
+                  Text('$invited', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                ]),
+              ),
+              const Spacer(),
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: onInvite,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      icon(_plus, 14, dark ? const Color(0xFF18181B) : orange, 2.6),
+                      const SizedBox(width: 3),
+                      Text(tr('300 ₽ за друга'),
+                          style: TextStyle(color: dark ? const Color(0xFF18181B) : orange, fontSize: 12.5, fontWeight: FontWeight.w900)),
                     ]),
                   ),
                 ),
               ),
-              // волны как на банковской карте
-              Positioned.fill(child: CustomPaint(painter: _CardWavesPainter(dark: dark))),
-              // блик сверху
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.white.withValues(alpha: dark ? .07 : .16), Colors.white.withValues(alpha: 0)],
-                      stops: const [0, .5],
-                    ),
+            ]),
+            const SizedBox(height: 12),
+            // 3: прогресс до следующего уровня
+            Row(children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: progress, minHeight: 5,
+                    backgroundColor: Colors.white.withValues(alpha: .22),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // чип, бесконтактный значок, уровень
-                    Row(
-                      children: [
-                        SvgPicture.string(_chip, width: 44, height: 34),
-                        const SizedBox(width: 8),
-                        Opacity(opacity: .8, child: SvgPicture.string(_nfc, width: 22, height: 22)),
-                        const Spacer(),
-                        GestureDetector( // AG_REFLVL1: нажали на уровень — экран уровней
-                          onTap: () => showAgLevelsSheet(context, invited: invited),
-                          child: Container(
-                          padding: const EdgeInsets.fromLTRB(6, 5, 11, 5),
-                          decoration: BoxDecoration(
-                            color: pill,
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(color: pillLine),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SvgPicture.asset(rankIcon, width: 20, height: 20),
-                              const SizedBox(width: 6),
-                              Text(rank,
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: .8)),
-                              const SizedBox(width: 2),
-                              const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 16),
-                            ],
-                          ),
-                        ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // баланс
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(tr('БОНУСНЫЙ БАЛАНС'),
-                                  style: TextStyle(color: sub, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-                              const SizedBox(height: 3),
-                              TweenAnimationBuilder<double>(
-                                tween: Tween<double>(begin: 0, end: points.toDouble()),
-                                duration: const Duration(milliseconds: 850),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, v, _) => Text(
-                                  '${v.round()} ₽',
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 32, height: 1, fontWeight: FontWeight.w900, letterSpacing: -1),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(13),
-                            onTap: onInvite,
-                            child: Ink(
-                              padding: const EdgeInsets.fromLTRB(8, 7, 11, 7),
-                              decoration: BoxDecoration(
-                                color: dark ? orange.withValues(alpha: .16) : Colors.white,
-                                borderRadius: BorderRadius.circular(13),
-                                border: Border.all(color: dark ? orange.withValues(alpha: .30) : Colors.white),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  icon(_plus, 15, dark ? const Color(0xFFFFA24A) : orange, 2.6),
-                                  const SizedBox(width: 4),
-                                  Text(tr('300 ₽ за друга'),
-                                      style: TextStyle(
-                                          color: dark ? const Color(0xFFFFA24A) : orange,
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w800)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 11),
-                    // прогресс уровня
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(99),
-                            child: Stack(
-                              children: [
-                                Container(height: 5, color: Colors.white.withValues(alpha: dark ? .10 : .25)),
-                                FractionallySizedBox(
-                                  widthFactor: progress.clamp(0.02, 1.0),
-                                  child: Container(
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                          colors: dark
-                                              ? const [Color(0xFFFFB067), Color(0xFFFF6A00)]
-                                              : const [Color(0xFFFFFFFF), Color(0xFFFFE2C2)]),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: () => showAgLevelsSheet(context, invited: invited),
-                          child: Text(nextAt == null ? 'MAX' : trf('ещё {0} до {1} ›', [left, nextName]),
-                              style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    // код, приглашённые, правила
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(10),
-                            onTap: () {
-                              if (code.trim().isEmpty || code == '—') return;
-                              Clipboard.setData(ClipboardData(text: code));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(tr('Код приглашения скопирован')), duration: Duration(seconds: 1)),
-                              );
-                            },
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(tr('КОД ПРИГЛАШЕНИЯ'),
-                                    style: TextStyle(color: sub, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(code,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 2.2,
-                                              fontFeatures: [FontFeature.tabularFigures()])),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    icon(_copy, 15, sub, 2),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: onInvite,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(tr('ПРИГЛАШЕНО'),
-                                    style: TextStyle(color: sub, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
-                                const SizedBox(height: 2),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    icon(_users, 16, accent, 2),
-                                    const SizedBox(width: 5),
-                                    Text('$invited',
-                                        style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Tooltip(
-                          message: tr('Правила AG BONUS'),
-                          child: Material(
-                            color: pill,
-                            borderRadius: BorderRadius.circular(12),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: onRules,
-                              child: SizedBox(width: 38, height: 38, child: Center(child: icon(_doc, 19, Colors.white, 1.9))),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // логотип карты
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text('AG BONUS',
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: dark ? .35 : .55),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              letterSpacing: 2)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              const SizedBox(width: 10),
+              Text(nextAt == null ? tr('максимальный уровень') : trf('ещё {0} до {1}', [left, nextName ?? '']),
+                  style: TextStyle(color: sub, fontSize: 11.5, fontWeight: FontWeight.w800)),
+            ]),
+          ]),
         ),
-      ),
+      ]),
     );
   }
 }
