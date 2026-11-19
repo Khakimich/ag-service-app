@@ -134,15 +134,15 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
   @override
   Widget build(BuildContext context) {
     final items = <_HubItem>[
-      _HubItem('taxi', tr('Работа в такси'), tr('Яндекс Такси в парке «Азия Про» с комиссией 0%'),
+      _HubItem('taxi', tr('Работа в такси'), tr('Яндекс Go · парк «Азия Про»'),
           const [Color(0xFFFFB53D), Color(0xFFFF7A00)], '0%', () => context.push('/park')),
-      _HubItem('tow', tr('Эвакуатор'), tr('по городу от 4000 ₽ — отвезём в автосервис'),
+      _HubItem('tow', tr('Эвакуатор'), tr('По городу · до сервиса'),
           const [Color(0xFFFF8A2A), Color(0xFFE85500)], 'от 4000 ₽', () => context.push('/evacuator')),
-      _HubItem('bodycam', tr('Кузовной ремонт'), tr('оценим стоимость по фото бесплатно'),
+      _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка по фото · бесплатно'),
           const [Color(0xFF4F8BFF), Color(0xFF1F54D6)], tr('по фото'), () => context.push('/body-repair')),
-      _HubItem('shield', tr('ОСАГО'), tr('по самой выгодной цене для такси'),
+      _HubItem('shield', tr('ОСАГО'), tr('Выгодно · для такси'),
           const [Color(0xFF34D399), Color(0xFF059669)], tr('скоро'), () => _soon(context), soon: true),
-      _HubItem('rent', tr('AG Гараж'), tr('аренда авто для работы в такси и поездок'), // AG_RENT1
+      _HubItem('rent', tr('AG Гараж'), tr('Аренда · для такси и поездок'), // AG_RENT1
           const [Color(0xFF3F3F46), Color(0xFF18181B)], tr('аренда'), () => context.push('/garage')),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -274,9 +274,24 @@ class _HubCardState extends State<_HubCard> {
                       ),
                     ],
                   ]),
-                  const SizedBox(height: 4),
-                  Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12.5, height: 1.25, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 3),
+                  // AG_SVCHUB11: короткая строка + «Подробнее →»
+                  Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                  const Spacer(),
+                  Row(children: [
+                    Text(item.soon ? tr('Скоро') : tr('Подробнее'),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: item.soon ? cs.onSurfaceVariant : const Color(0xFFF26200))),
+                    const Spacer(),
+                    Container(
+                      width: 24, height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: item.soon ? cs.onSurfaceVariant.withValues(alpha: .12) : const Color(0xFFF26200),
+                      ),
+                      child: Icon(Icons.arrow_forward_rounded, size: 15, color: item.soon ? cs.onSurfaceVariant : Colors.white),
+                    ),
+                  ]),
                 ]),
               ),
             ),
