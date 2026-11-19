@@ -211,7 +211,10 @@ class _AgPromoSquaresState extends State<AgPromoSquares> {
   Widget build(BuildContext context) {
     final items = _items;
     if (_failed || (items != null && items.isEmpty)) return widget.fallback;
-    const size = 156.0; // AG_PROMO4: квадрат
+    // AG_PROMO5: ровно 3 карточки на экране телефона (4–5 на планшете/ПК)
+    return LayoutBuilder(builder: (context, box) {
+    final cols = box.maxWidth >= 900 ? 5 : box.maxWidth >= 600 ? 4 : 3;
+    final size = ((box.maxWidth - 10 * (cols - 1)) / cols).floorToDouble();
     return SizedBox(
       height: size,
       child: ListView.separated(
@@ -237,6 +240,7 @@ class _AgPromoSquaresState extends State<AgPromoSquares> {
         },
       ),
     );
+    });
   }
 }
 
@@ -271,7 +275,7 @@ class _PromoSquareState extends State<_PromoSquare> {
           height: widget.size,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: widget.colors),
             boxShadow: [BoxShadow(color: widget.colors[1].withValues(alpha: .22), blurRadius: 14, offset: const Offset(0, 6))],
           ),
@@ -295,12 +299,12 @@ class _PromoSquareState extends State<_PromoSquare> {
                 child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .12))),
               ),
             Positioned(
-              left: 13, right: 10, top: 12,
+              left: widget.size * .09, right: widget.size * .06, top: widget.size * .08,
               child: Text(
                 item.title,
                 maxLines: item.imageUrl != null ? 3 : 5,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.18, fontWeight: FontWeight.w800, letterSpacing: -.2),
+                style: TextStyle(color: Colors.white, fontSize: (widget.size * .105).clamp(12.0, 16.0), height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.2),
               ),
             ),
           ]),
