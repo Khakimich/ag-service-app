@@ -3094,14 +3094,19 @@ class _AgWeatherState extends State<_AgWeather> {
       var lat = 56.84, lon = 60.61;
       try {
         final perm = await Geolocator.checkPermission();
-        if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
+        // AG_WEATHER4: на компьютере/в браузере место определяется по IP и через VPN бывает «за границей» —
+        // там всегда Екатеринбург; в телефоне берём GPS, но только если точка в России
+        if (!kIsWeb && (perm == LocationPermission.always || perm == LocationPermission.whileInUse)) {
           Position? p;
           if (!kIsWeb) p = await Geolocator.getLastKnownPosition();
           p ??= await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 6)),
           );
-          lat = p.latitude;
-          lon = p.longitude;
+          final inRu = p.latitude >= 41 && p.latitude <= 82 && (p.longitude >= 19 || p.longitude <= -168);
+          if (inRu) {
+            lat = p.latitude;
+            lon = p.longitude;
+          }
         }
       } catch (_) {}
       // AG_WEATHER3: сначала через наш сервер (работает и на мобильном интернете с «белыми списками»), запасной — Open-Meteo
