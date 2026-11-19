@@ -37,22 +37,53 @@
   <meta name="format-detection" content="telephone=no">
   <!-- AG_WEBFAST1: экран загрузки, пока скачивается приложение (на iPhone первый запуск — несколько секунд) -->
   <style>
-    html,body{margin:0;height:100%;background:#111113;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
-    #ag-splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#111113;z-index:9999;transition:opacity .35s}
-    #ag-splash img{width:92px;height:92px;border-radius:26px;box-shadow:0 18px 40px -12px rgba(242,98,0,.55)}
-    #ag-splash i{width:34px;height:34px;border-radius:50%;border:3px solid rgba(242,98,0,.25);border-top-color:#F26200;animation:ags .8s linear infinite}
-    #ag-splash b{color:#9CA3AF;font:600 14px -apple-system,Segoe UI,Roboto,sans-serif}
-    @keyframes ags{to{transform:rotate(360deg)}}
+    /* AG_SPLASH2: мягкий экран загрузки — тёплое свечение, «дышащий» логотип, кольца, полоса загрузки, сменяющиеся подсказки */
+    html,body{margin:0;height:100%;background:#121214;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+    #ag-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;
+      background:radial-gradient(60vmax 60vmax at 50% 42%,rgba(255,122,26,.20),transparent 60%),radial-gradient(50vmax 40vmax at 85% 110%,rgba(255,170,90,.10),transparent 60%),#121214;
+      font-family:-apple-system,"Segoe UI",Roboto,sans-serif;transition:opacity .5s ease,transform .5s ease}
+    #ag-splash.out{opacity:0;transform:scale(1.04)}
+    .ags-blob{position:absolute;width:42vmax;height:42vmax;border-radius:50%;filter:blur(60px);opacity:.35;background:#FF7A1A;animation:agsFloat 9s ease-in-out infinite}
+    .ags-blob.b2{width:30vmax;height:30vmax;background:#FFB46B;opacity:.18;animation-duration:12s;animation-direction:reverse}
+    @keyframes agsFloat{0%,100%{transform:translate(-18vmax,-10vmax)}50%{transform:translate(16vmax,8vmax)}}
+    .ags-logo{position:relative;width:108px;height:108px;display:grid;place-items:center;animation:agsIn .8s cubic-bezier(.2,.9,.3,1.2) both}
+    .ags-logo img{width:96px;height:96px;border-radius:28px;box-shadow:0 22px 48px -14px rgba(242,98,0,.7);animation:agsBreath 2.4s ease-in-out infinite;position:relative;z-index:2}
+    .ags-ring{position:absolute;inset:0;border-radius:34px;border:2px solid rgba(255,138,61,.55);animation:agsRing 2.4s ease-out infinite}
+    .ags-ring.r2{animation-delay:1.2s}
+    @keyframes agsIn{from{opacity:0;transform:translateY(14px) scale(.85)}to{opacity:1;transform:none}}
+    @keyframes agsBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes agsRing{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+    .ags-title{margin-top:30px;color:#fff;font-weight:800;font-size:22px;letter-spacing:-.3px;animation:agsIn .8s .15s both}
+    .ags-bar{margin-top:18px;width:170px;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;animation:agsIn .8s .25s both}
+    .ags-bar i{display:block;height:100%;width:40%;border-radius:99px;background:linear-gradient(90deg,#FF8A3D,#F26200);animation:agsBar 1.4s ease-in-out infinite}
+    @keyframes agsBar{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}
+    .ags-hint{margin-top:14px;height:20px;color:#9CA3AF;font-size:13.5px;font-weight:600;transition:opacity .4s}
+    @media (prefers-reduced-motion:reduce){.ags-blob,.ags-logo img,.ags-ring,.ags-bar i{animation:none}}
   </style>
 </head>
 <body>
-  <div id="ag-splash"><img src="icons/Icon-192.png" alt="AG Service" onerror="this.style.display='none'"><i></i><b>AG Service загружается…</b></div>
+  <div id="ag-splash">
+    <div class="ags-blob"></div><div class="ags-blob b2"></div>
+    <div class="ags-logo"><span class="ags-ring"></span><span class="ags-ring r2"></span><img src="icons/Icon-192.png" alt="AG Service" onerror="this.style.display='none'"></div>
+    <div class="ags-title">AG Service</div>
+    <div class="ags-bar"><i></i></div>
+    <div class="ags-hint" id="ags-hint">Загружаем приложение…</div>
+  </div>
   <script>
-    // убрать экран загрузки, когда Flutter нарисовал первый кадр
-    window.addEventListener("flutter-first-frame", function () {
-      var s = document.getElementById("ag-splash"); if (!s) return;
-      s.style.opacity = "0"; setTimeout(function () { s.remove(); }, 400);
-    });
+    (function () {
+      var hints = ["Загружаем приложение…", "Готовим ваш гараж…", "Проверяем записи…", "Почти готово…"], i = 0;
+      var el = document.getElementById("ags-hint");
+      var t = setInterval(function () {
+        if (!el || !document.getElementById("ag-splash")) return clearInterval(t);
+        el.style.opacity = 0;
+        setTimeout(function () { i = (i + 1) % hints.length; el.textContent = hints[i]; el.style.opacity = 1; }, 400);
+      }, 1800);
+      // убрать экран загрузки, когда Flutter нарисовал первый кадр
+      window.addEventListener("flutter-first-frame", function () {
+        var s = document.getElementById("ag-splash"); if (!s) return;
+        clearInterval(t); s.classList.add("out"); setTimeout(function () { s.remove(); }, 520);
+      });
+    })();
   </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
