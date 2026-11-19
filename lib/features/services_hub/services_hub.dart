@@ -135,7 +135,7 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
   Widget build(BuildContext context) {
     final items = <_HubItem>[
       _HubItem('taxi', tr('Работа в такси'), tr('Азия Про'),
-          const [Color(0xFFFFB53D), Color(0xFFFF7A00)], '0%', () => context.push('/park'),
+          const [Color(0xFFFFB53D), Color(0xFFFF7A00)], tr('от 0%'), () => context.push('/park'),
           verified: true, action: tr('Подключение')), // AG_SVCHUB12
       _HubItem('tow', tr('Эвакуатор'), tr('По городу · до сервиса'),
           const [Color(0xFFFF8A2A), Color(0xFFE85500)], 'от 4000 ₽', () => context.push('/evacuator')),
@@ -256,6 +256,8 @@ class _HubCardState extends State<_HubCard> {
                       ]),
                     ),
                   ),
+                  // AG_SVCHUB14: едущее такси внизу картинки
+                  if (item.icon == 'taxi') const Positioned(left: 0, right: 0, bottom: 4, height: 26, child: _DrivingTaxi()),
                 ]),
               ),
             ),
@@ -1012,5 +1014,50 @@ class _BodyRepairScreenState extends State<BodyRepairScreen> {
             textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant)),
       ],
     );
+  }
+}
+
+
+/* AG_SVCHUB14: маленькое такси едет слева направо по низу карточки, с «дорожной» разметкой */
+class _DrivingTaxi extends StatefulWidget {
+  const _DrivingTaxi();
+  @override
+  State<_DrivingTaxi> createState() => _DrivingTaxiState();
+}
+
+class _DrivingTaxiState extends State<_DrivingTaxi> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..repeat();
+
+  static const _car = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 24">'
+      '<ellipse cx="24" cy="21.5" rx="20" ry="2" fill="#000" opacity=".25"/>'
+      '<rect x="19" y="1.5" width="9" height="3.6" rx="1" fill="#111827"/><path d="M20.4 2.5h2v1.6h-2zM24.6 2.5h2v1.6h-2z" fill="#FFD43B"/>'
+      '<path d="M4 15.5c0-2 1.2-3.2 3-3.6l5-5.6c1-1.1 2.3-1.7 3.8-1.7h11.6c1.6 0 3 .6 4 1.8l4.2 5.1 5.6 1.1c2 .4 3.3 1.8 3.3 3.8v2.2c0 .8-.6 1.4-1.4 1.4H5.4c-.8 0-1.4-.6-1.4-1.4z" fill="#FFC83D" stroke="#E0A400" stroke-width=".6"/>'
+      '<path d="M14.6 7.6c.5-.6 1.2-.9 2-.9h5.6v5.2H10.6zM24.2 6.7h3.6c.9 0 1.6.4 2.2 1l3.2 4.2h-9z" fill="#CFE9FF"/>'
+      '<path d="M4.5 14h39" stroke="#111827" stroke-width="1.1" stroke-dasharray="1.6 1.6"/>'
+      '<rect x="42" y="13.4" width="2.6" height="1.6" rx=".6" fill="#FFF4C2"/>'
+      '<circle cx="13" cy="19" r="3.3" fill="#1F2937"/><circle cx="35" cy="19" r="3.3" fill="#1F2937"/>'
+      '<circle cx="13" cy="19" r="1.3" fill="#D1D5DB"/><circle cx="35" cy="19" r="1.3" fill="#D1D5DB"/></svg>';
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      const w = 46.0;
+      return AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) {
+          final x = -w + (box.maxWidth + w) * Curves.easeInOutSine.transform(_c.value);
+          final bump = (_c.value * 40).floor().isEven ? 0.0 : -0.6; // лёгкая «тряска» на дороге
+          return Stack(clipBehavior: Clip.hardEdge, children: [
+            Positioned(left: x, bottom: bump, width: w, height: 23, child: SvgPicture.string(_car)),
+          ]);
+        },
+      );
+    });
   }
 }
