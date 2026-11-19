@@ -134,8 +134,9 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
   @override
   Widget build(BuildContext context) {
     final items = <_HubItem>[
-      _HubItem('taxi', tr('Работа в такси'), tr('Яндекс Go · парк «Азия Про»'),
-          const [Color(0xFFFFB53D), Color(0xFFFF7A00)], '0%', () => context.push('/park')),
+      _HubItem('taxi', tr('Работа в такси'), tr('Азия Про'),
+          const [Color(0xFFFFB53D), Color(0xFFFF7A00)], '0%', () => context.push('/park'),
+          verified: true, action: tr('Подключение')), // AG_SVCHUB12
       _HubItem('tow', tr('Эвакуатор'), tr('По городу · до сервиса'),
           const [Color(0xFFFF8A2A), Color(0xFFE85500)], 'от 4000 ₽', () => context.push('/evacuator')),
       _HubItem('bodycam', tr('Кузовной ремонт'), tr('Оценка по фото · бесплатно'),
@@ -192,8 +193,10 @@ class _ServicesHubSectionState extends State<ServicesHubSection> with SingleTick
 }
 
 class _HubItem {
-  const _HubItem(this.icon, this.title, this.subtitle, this.colors, this.badge, this.onTap, {this.soon = false});
-  final String icon, title, subtitle, badge;
+  const _HubItem(this.icon, this.title, this.subtitle, this.colors, this.badge, this.onTap,
+      {this.soon = false, this.verified = false, this.action = ''});
+  final String icon, title, subtitle, badge, action;
+  final bool verified; // AG_SVCHUB12: синяя галочка «проверено» у подписи
   final List<Color> colors;
   final VoidCallback onTap;
   final bool soon;
@@ -281,11 +284,23 @@ class _HubCardState extends State<_HubCard> {
                   ]),
                   const SizedBox(height: 3),
                   // AG_SVCHUB11: короткая строка + «Подробнее →»
-                  Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                  Row(children: [
+                    Flexible(
+                      child: Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12.5, height: 1.2, fontWeight: item.verified ? FontWeight.w800 : FontWeight.w600,
+                              color: item.verified ? cs.onSurface : cs.onSurfaceVariant)),
+                    ),
+                    if (item.verified) ...[
+                      const SizedBox(width: 4),
+                      SvgPicture.string(
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#1D9BF0" d="M12 1.8l2.4 1.8 3-.2.9 2.9 2.5 1.7-1 2.8 1 2.8-2.5 1.7-.9 2.9-3-.2L12 22.2l-2.4-1.8-3 .2-.9-2.9-2.5-1.7 1-2.8-1-2.8 2.5-1.7.9-2.9 3 .2z"/><path d="M7.8 12.3l2.8 2.8 5.6-5.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                        width: 15, height: 15,
+                      ),
+                    ],
+                  ]),
                   const Spacer(),
                   Row(children: [
-                    Text(item.soon ? tr('Скоро') : tr('Подробнее'),
+                    Text(item.soon ? tr('Скоро') : (item.action.isNotEmpty ? item.action : tr('Подробнее')),
                         style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: item.soon ? cs.onSurfaceVariant : const Color(0xFFF26200))),
                     const Spacer(),
                     Container(
