@@ -3104,13 +3104,26 @@ class _AgWeatherState extends State<_AgWeather> {
           lon = p.longitude;
         }
       } catch (_) {}
-      final r = await http
-          .get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=${lat.toStringAsFixed(2)}&longitude=${lon.toStringAsFixed(2)}&current=temperature_2m,weather_code&timezone=auto'))
-          .timeout(const Duration(seconds: 8));
-      final j = jsonDecode(r.body) as Map<String, dynamic>;
-      final c = j['current'] as Map<String, dynamic>;
-      _t = (c['temperature_2m'] as num).round();
-      _code = (c['weather_code'] as num).toInt();
+      // AG_WEATHER3: сначала через наш сервер (работает и на мобильном интернете с «белыми списками»), запасной — Open-Meteo
+      int? t;
+      int? code;
+      try {
+        final r = await http
+            .get(Uri.parse('https://api.autogrom-group.com/api/weather?lat=${lat.toStringAsFixed(2)}&lon=${lon.toStringAsFixed(2)}'))
+            .timeout(const Duration(seconds: 8));
+        final j = jsonDecode(r.body) as Map<String, dynamic>;
+        t = (j['temperature'] as num).round();
+        code = (j['code'] as num).toInt();
+      } catch (_) {
+        final r = await http
+            .get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=${lat.toStringAsFixed(2)}&longitude=${lon.toStringAsFixed(2)}&current=temperature_2m,weather_code&timezone=auto'))
+            .timeout(const Duration(seconds: 8));
+        final c = (jsonDecode(r.body) as Map<String, dynamic>)['current'] as Map<String, dynamic>;
+        t = (c['temperature_2m'] as num).round();
+        code = (c['weather_code'] as num).toInt();
+      }
+      _t = t;
+      _code = code;
       _at = DateTime.now();
       if (mounted) setState(() {});
     } catch (_) {}
