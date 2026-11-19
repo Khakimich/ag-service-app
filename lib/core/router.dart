@@ -116,14 +116,10 @@ GoRouter createAppRouter(AuthProvider authProvider) => GoRouter(
         GoRoute(path: '/park', builder: (_, __) => const ParkJoinScreen()), // AG_PARK1
         GoRoute(path: '/evacuator', builder: (_, __) => const EvacuatorScreen()), // AG_SVCHUB1
         GoRoute(path: '/body-repair', builder: (_, __) => const BodyRepairScreen()), // AG_SVCHUB1
-        GoRoute(path: '/garage', builder: (_, __) => const GarageScreen()), // AG_RENT1
-        GoRoute(
-          path: '/garage/:id',
-          builder: (_, state) => GarageCarScreen(
-            id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-            car: state.extra is RentCar ? state.extra as RentCar : null,
-          ),
-        ), // AG_RENT1
+        // AG_RENT_SOON2: пока AG Гараж не запущен — любой вход (ссылка, старая кнопка, push) показывает «скоро».
+        // Чтобы включить: вернуть GarageScreen / GarageCarScreen (они остались в lib/features/garage/garage.dart).
+        GoRoute(path: '/garage', builder: (_, __) => const GarageSoonScreen()),
+        GoRoute(path: '/garage/:id', builder: (_, __) => const GarageSoonScreen()),
         GoRoute(path: '/chats', builder: (_, __) => const ChatsScreen()),
         GoRoute(
           path: '/profile',

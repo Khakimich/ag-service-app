@@ -1246,3 +1246,61 @@ class _DoneSheet extends StatelessWidget {
         ),
       );
 }
+
+
+/* AG_RENT_SOON2: экран-заглушка «AG Гараж скоро будет доступен» */
+class GarageSoonScreen extends StatelessWidget {
+  const GarageSoonScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    return Scaffold(
+      backgroundColor: _bg(context),
+      body: Column(children: [
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(18, top + 8, 18, 22),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFFFF8A2A), Color(0xFFFF6A00), Color(0xFFE85500)]),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _RoundBtn(icon: _I.back(), onTap: () => context.canPop() ? context.pop() : context.go('/')),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 110, height: 110, alignment: Alignment.center,
+                  decoration: BoxDecoration(color: _card(context), borderRadius: BorderRadius.circular(32),
+                      boxShadow: [BoxShadow(color: _o.withValues(alpha: .18), blurRadius: 24, offset: const Offset(0, 10))]),
+                  child: _svg(_I.car(), 64),
+                ),
+                const SizedBox(height: 22),
+                Text(tr('AG Гараж скоро будет доступен'), textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                const SizedBox(height: 10),
+                Text(tr('Мы готовим аренду авто для работы в такси и поездок. Совсем скоро!'), textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, height: 1.4, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 24),
+                SizedBox(
+                  height: 50,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: _o, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                    child: Text(tr('Понятно'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
