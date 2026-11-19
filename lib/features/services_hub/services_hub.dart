@@ -292,9 +292,10 @@ class _HubCardState extends State<_HubCard> {
                     ),
                     if (item.verified) ...[
                       const SizedBox(width: 4),
+                      // AG_SVCHUB13: ровный значок «проверено» (12 зубцов) с полной галочкой
                       SvgPicture.string(
-                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#1D9BF0" d="M12 1.8l2.4 1.8 3-.2.9 2.9 2.5 1.7-1 2.8 1 2.8-2.5 1.7-.9 2.9-3-.2L12 22.2l-2.4-1.8-3 .2-.9-2.9-2.5-1.7 1-2.8-1-2.8 2.5-1.7.9-2.9 3 .2z"/><path d="M7.8 12.3l2.8 2.8 5.6-5.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                        width: 15, height: 15,
+                        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#1D9BF0" d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82L8.6 21.5l3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69z"/><path fill="#fff" d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9z"/></svg>',
+                        width: 16, height: 16,
                       ),
                     ],
                   ]),
