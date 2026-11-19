@@ -256,8 +256,8 @@ class _HubCardState extends State<_HubCard> {
                       ]),
                     ),
                   ),
-                  // AG_SVCHUB14: едущее такси внизу картинки
-                  if (item.icon == 'taxi') const Positioned(left: 0, right: 0, bottom: 4, height: 26, child: _DrivingTaxi()),
+                  // AG_SVCHUB15: блик света пробегает по фото (вместо мультяшной машинки)
+                  if (item.icon == 'taxi') const Positioned.fill(child: IgnorePointer(child: _Shine())),
                 ]),
               ),
             ),
@@ -1018,25 +1018,15 @@ class _BodyRepairScreenState extends State<BodyRepairScreen> {
 }
 
 
-/* AG_SVCHUB14: маленькое такси едет слева направо по низу карточки, с «дорожной» разметкой */
-class _DrivingTaxi extends StatefulWidget {
-  const _DrivingTaxi();
+/* AG_SVCHUB15: глянцевый блик — светлая полоса наискосок проходит по картинке раз в ~3,5 с */
+class _Shine extends StatefulWidget {
+  const _Shine();
   @override
-  State<_DrivingTaxi> createState() => _DrivingTaxiState();
+  State<_Shine> createState() => _ShineState();
 }
 
-class _DrivingTaxiState extends State<_DrivingTaxi> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..repeat();
-
-  static const _car = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 24">'
-      '<ellipse cx="24" cy="21.5" rx="20" ry="2" fill="#000" opacity=".25"/>'
-      '<rect x="19" y="1.5" width="9" height="3.6" rx="1" fill="#111827"/><path d="M20.4 2.5h2v1.6h-2zM24.6 2.5h2v1.6h-2z" fill="#FFD43B"/>'
-      '<path d="M4 15.5c0-2 1.2-3.2 3-3.6l5-5.6c1-1.1 2.3-1.7 3.8-1.7h11.6c1.6 0 3 .6 4 1.8l4.2 5.1 5.6 1.1c2 .4 3.3 1.8 3.3 3.8v2.2c0 .8-.6 1.4-1.4 1.4H5.4c-.8 0-1.4-.6-1.4-1.4z" fill="#FFC83D" stroke="#E0A400" stroke-width=".6"/>'
-      '<path d="M14.6 7.6c.5-.6 1.2-.9 2-.9h5.6v5.2H10.6zM24.2 6.7h3.6c.9 0 1.6.4 2.2 1l3.2 4.2h-9z" fill="#CFE9FF"/>'
-      '<path d="M4.5 14h39" stroke="#111827" stroke-width="1.1" stroke-dasharray="1.6 1.6"/>'
-      '<rect x="42" y="13.4" width="2.6" height="1.6" rx=".6" fill="#FFF4C2"/>'
-      '<circle cx="13" cy="19" r="3.3" fill="#1F2937"/><circle cx="35" cy="19" r="3.3" fill="#1F2937"/>'
-      '<circle cx="13" cy="19" r="1.3" fill="#D1D5DB"/><circle cx="35" cy="19" r="1.3" fill="#D1D5DB"/></svg>';
+class _ShineState extends State<_Shine> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600))..repeat();
 
   @override
   void dispose() {
@@ -1046,18 +1036,24 @@ class _DrivingTaxiState extends State<_DrivingTaxi> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, box) {
-      const w = 46.0;
-      return AnimatedBuilder(
-        animation: _c,
-        builder: (_, __) {
-          final x = -w + (box.maxWidth + w) * Curves.easeInOutSine.transform(_c.value);
-          final bump = (_c.value * 40).floor().isEven ? 0.0 : -0.6; // лёгкая «тряска» на дороге
-          return Stack(clipBehavior: Clip.hardEdge, children: [
-            Positioned(left: x, bottom: bump, width: w, height: 23, child: SvgPicture.string(_car)),
-          ]);
-        },
-      );
-    });
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        // первые 35% времени — проход блика, остальное — пауза
+        final t = (_c.value / .35).clamp(0.0, 1.0);
+        if (t >= 1) return const SizedBox.shrink();
+        final x = -1.6 + 3.2 * Curves.easeInOut.transform(t);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(x - .6, -1),
+              end: Alignment(x + .6, 1),
+              colors: [Colors.white.withValues(alpha: 0), Colors.white.withValues(alpha: .38), Colors.white.withValues(alpha: 0)],
+              stops: const [.35, .5, .65],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
